@@ -19,6 +19,7 @@ namespace BestForm.CLI
 
         public static void Run(string output, Lst<SourceFile> sources)
         {
+            Directory.CreateDirectory(output);
             Copy("doc.css", Path.Combine(output, "doc.css"));
 
             var allns = YieldNamespaces("", sources.Map(x => x as Namespace).Freeze());
@@ -106,7 +107,10 @@ namespace BestForm.CLI
 
         private static void Copy(string from, string to)
         {
-            File.Delete(to);
+            if (File.Exists(to))
+            {
+                File.Delete(to);
+            }
             File.Copy(from, to);
         }
 
