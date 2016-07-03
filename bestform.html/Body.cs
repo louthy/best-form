@@ -10,9 +10,9 @@ namespace BestForm
 {
     public static class Body
     {
-        public static Dom Build(Dom content) =>
+        public static Dom Build(Lst<Tuple<string, string>> trail, Dom content) =>
             html(
                 head(css(href: attr("doc.css"))),
-                body(content));
+                body(NavBar.dom(trail, content)));
     }
 }

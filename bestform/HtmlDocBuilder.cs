@@ -30,24 +30,26 @@ namespace BestForm.CLI
 
             namespaces.AsEnumerable().Select(ns =>
             {
+                var trail = List(Tuple("API Reference", "../index.htm"), Tuple(ns.Key, $"../{ns.Key}/index.htm"));
+
                 var nspath = Path.Combine(output, ns.Key);
                 Directory.CreateDirectory(nspath);
                 Copy("doc.css", Path.Combine(nspath, "doc.css"));
 
                 File.WriteAllText(
                     Path.Combine(nspath, $"index.htm"),
-                    Body.Build(NamespacePage.page)(ns.Value).AsString()
+                    Body.Build(trail, NamespacePage.page)(ns.Value).AsString()
                     );
 
-                WriteDelegates(ns, nspath);
-                WriteTypes(ns, nspath);
-                WriteEnums(ns, nspath);
+                WriteDelegates(ns, nspath, trail);
+                WriteTypes(ns, nspath, trail);
+                WriteEnums(ns, nspath, trail);
 
                 return ns;
             }).AsParallel().ToList();
         }
 
-        private static void WriteTypes(IMapItem<string, Namespace> ns, string nspath)
+        private static void WriteTypes(IMapItem<string, Namespace> ns, string nspath, Lst<Tuple<string, string>> trail)
         {
             ns.Value.Types.Filter(t => t.Visibility == Vis.Public || t.Visibility == Vis.Protected).Select(type =>
             {
@@ -55,14 +57,17 @@ namespace BestForm.CLI
 
                 File.WriteAllText(
                     tpath,
-                    Body.Build(TypePage.page)(Tuple(ns.Key, type)).AsString()
+                    Body.Build(
+                        trail.Add(Tuple(type.Name.ToString(), $"{type.UniqueName}.htm")),
+                        TypePage.page
+                        )(Tuple(ns.Key, type)).AsString()
                     );
 
                 return type;
             }).AsParallel().ToList();
         }
 
-        private static void WriteEnums(IMapItem<string, Namespace> ns, string nspath)
+        private static void WriteEnums(IMapItem<string, Namespace> ns, string nspath, Lst<Tuple<string, string>> trail)
         {
             ns.Value.Enums.Filter(t => t.Visibility == Vis.Public).Select(type =>
             {
@@ -70,22 +75,29 @@ namespace BestForm.CLI
 
                 File.WriteAllText(
                     tpath,
-                    Body.Build(EnumPage.page)(Tuple(ns.Key, type)).AsString()
+                    Body.Build(
+                        trail.Add(Tuple(type.Name.ToString(), $"{type.Name}.htm")),
+                        EnumPage.page
+                        )(Tuple(ns.Key, type)).AsString()
                     );
 
                 return type;
             }).AsParallel().ToList();
         }
 
-        private static void WriteDelegates(IMapItem<string, Namespace> ns, string nspath)
+        private static void WriteDelegates(IMapItem<string, Namespace> ns, string nspath, Lst<Tuple<string,string>> trail)
         {
             ns.Value.Delegates.Filter(t => t.Visibility == Vis.Public).Select(type =>
             {
+
                 var tpath = Path.Combine(nspath, $"{type.UniqueName}.htm");
 
                 File.WriteAllText(
                     tpath,
-                    Body.Build(DelegatePage.page)(Tuple(ns.Key, type)).AsString()
+                    Body.Build(
+                        trail.Add(Tuple(type.Name.ToString(), $"{type.UniqueName}.htm")), 
+                        DelegatePage.page
+                        )(Tuple(ns.Key, type)).AsString()
                     );
 
                 return type;

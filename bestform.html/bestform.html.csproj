@@ -68,6 +68,7 @@
     <Compile Include="EnumPage.cs" />
     <Compile Include="Html.cs" />
     <Compile Include="NamespacePage.cs" />
+    <Compile Include="NavBar.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Tokens.cs" />
     <Compile Include="TypePage.cs" />
