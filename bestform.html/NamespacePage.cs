@@ -55,7 +55,7 @@ namespace BestForm
 
         public static Dom overview =>
             div(new { @class = "doc-ns-type" },
-                anchor(attr<TypeDef>(t => $"#{t.UniqueName}")),
+                anchor(attr<TypeDef>(t => t.UniqueName)),
                 left(
                     p(typeLink),
                     p(DocumentHtml.summary)),
@@ -81,7 +81,7 @@ namespace BestForm
 
         public static Dom delegateOverview =>
             div(new { @class = "doc-ns-type" },
-                anchor(attr<DelegateDef>(t => $"#{t.UniqueName}")),
+                anchor(attr<DelegateDef>(t => t.UniqueName)),
                 left(
                     p(delegateLink),
                     p(DocumentHtml.summary)),
@@ -112,7 +112,7 @@ namespace BestForm
 
         public static Dom enumOverview =>
             div(new { @class = "doc-ns-type" },
-                anchor(attr<EnumDef>(t => $"#{t.Name}")),
+                anchor(attr<EnumDef>(t => t.Name.ToString())),
                 left(
                     p(enumLink),
                     p(DocumentHtml.summary)),
