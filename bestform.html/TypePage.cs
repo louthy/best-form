@@ -36,6 +36,10 @@ namespace BestForm
                     m => m.Ctors,
                     h2(text("Constructors")),
                     iter(methodDetail)),
+                any<Model, DelegateDef>(
+                    m => m.Delegates,
+                    h2(text("Delegates")),
+                    iter(delegateDetail)),
                 any<Model, FieldDef>(
                     m => m.Fields,
                     h2(text("Fields")),
@@ -48,10 +52,6 @@ namespace BestForm
                     m => m.Methods,
                     h2(text("Methods")),
                     iter(methodDetail)),
-                any<Model, DelegateDef>(
-                    m => m.Delegates,
-                    h2(text("Delegates")),
-                    iter(delegateDetail)),
                 any<Model, EnumDef>(
                     m => m.Enums,
                     h2(text("Enums")),
@@ -134,7 +134,8 @@ namespace BestForm
             div(new { @class = "member-title" },
                 anchor(attr<MethodDef>(m => m.Name.ToString())),
                 text<MethodDef>(m => m.Name.ToString()),
-                parens(text<MethodDef>(m => String.Join(", ", m.Args.Map(x => x.Type.ToString())))));
+                parens(text<MethodDef>(m => String.Join(", ", m.Args.Map(x => x.Type.ToString())))),
+                source);
 
         public static Dom methodDetail =>
             combine(
@@ -150,7 +151,10 @@ namespace BestForm
                         code(methodDef),
                         returns,
                         constraints,
-                        DocumentHtml.exceptionsAndTitle)));
+                        DocumentHtml.exceptionsAndTitle),
+                    div( new { @style="display:none", id=attr<MethodDef>(m => $"code-{m.UniqueName}") },
+                        sectionTitle("SOURCE"),
+                        code(text<MethodDef>(m => (m.Source as CodeBlockExpr)?.Source)))));
 
         public static Dom enumTitle =>
             div(new { @class = "member-title" },

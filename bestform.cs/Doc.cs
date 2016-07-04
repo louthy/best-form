@@ -111,7 +111,9 @@ namespace BestForm.CS
 
         public Either<ParserError,DocumentComments> Parse(Lst<string> lines)
         {
-            var text = String.Join("", lines);
+            var text = String.Join("", lines.Map(x => String.IsNullOrWhiteSpace(x) ? "[CR-LF]" : x))   
+                             .Replace("<para>","")
+                             .Replace("</para>", "[CR-LF]");
             var res = Parser(text.ToPString());
             if( res.IsFaulted)
             {

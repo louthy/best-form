@@ -60,7 +60,9 @@ namespace BestForm
                 div(new { @class = "arg-header" },
                     div(new { @class = "arg-name" }, text<EnumMember>(a => a.Name.ToString())),
                     div(new { @class = "arg-type" }, number(text<EnumMember>(a => a.Value.Map(x => x.ToString()).IfNone(""))))),
-                div(new { @class = "arg-desc" }, DocumentHtml.summary));
+                div(new { @class = "arg-desc" }, DocumentHtml.summary),
+                div(new { @class = "arg-desc" }, DocumentHtml.remarksAndTitle)
+                );
 
         public static Dom nav =>
             combine(

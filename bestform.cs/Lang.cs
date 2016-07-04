@@ -210,10 +210,12 @@ namespace BestForm.CS
             select new ArrayDef(cs.Count() + 1);
 
         Parser<TypeRef> typeRef =>
+            from i in optional(reserved("in"))
+            from o in optional(reserved("out"))
             from t in fqn
             from n in optional(symbol("?"))
             from a in optional(arrayDef)
-            select new TypeRef(t, a, n.IsSome);
+            select new TypeRef(t, a, n.IsSome, i.IsSome, o.IsSome);
 
         Parser<Arg> arg =>
             from a in attributes
@@ -226,6 +228,9 @@ namespace BestForm.CS
             from d in optional(
                 from _ in symbol("=")
                 from v in choice(
+                    attempt(from deflt in reserved("default")
+                            from dtype in parens(typeRef)
+                            select new Constant(dtype, "default")),
                     attempt(floating).Map(c => new Constant(t, c.ToString())),
                     attempt(integer).Map(c => new Constant(t, c.ToString())),
                     attempt(stringLiteral.Map(c => new Constant(t, c))),
@@ -310,6 +315,7 @@ namespace BestForm.CS
                     attempt(symbol("long").Map(_ => TypeRef.Long)),
                     attempt(symbol("uint").Map(_ => TypeRef.UInt)),
                     attempt(symbol("ushort").Map(_ => TypeRef.UShort)),
+                    attempt(symbol("ubyte").Map(_ => TypeRef.UByte)),
                     symbol("ulong").Map(_ => TypeRef.ULong))
                 select t)
             from mem in braces(commaSep1(attempt(enumMember)))
@@ -344,7 +350,7 @@ namespace BestForm.CS
             from doc in documentation
             from atr in attributes
             from vis in visibility
-            from qua in qualifiers("readonly", "static")
+            from qua in qualifiers("readonly", "static", "event", "volatile")
             from typ in typeRef
             from nam in identifier
             from src in optional(
@@ -353,7 +359,7 @@ namespace BestForm.CS
                 from sr in lambdaBlock // expr
                 select new CodeBlockExpr(sr, ps) as CsExpr )
             from sem in semi
-            select new FieldDef(typ, nam, vis, src.IfNone(new CsExpr()), atr, doc, qua.Contains("readonly"), qua.Contains("static"));
+            select new FieldDef(typ, nam, vis, src.IfNone(new CsExpr()), atr, doc, qua.Contains("readonly"), qua.Contains("static"), qua.Contains("event"), qua.Contains("volatile"));
 
         Parser<ConstDef> constDef =>
             from doc in documentation
@@ -573,7 +579,6 @@ namespace BestForm.CS
                     attempt(reserved("interface").Map(_ => TypeDefTag.Interface)),
                     reserved("struct").Map(_ => TypeDefTag.Struct))
                 from nam in identifier
-                //from gen in optional(genericArgs)
                 from der in optional(from _ in symbol(":")
                                      from d in derived
                                      select d)

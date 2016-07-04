@@ -12,8 +12,6 @@ namespace BestForm.Tokens
         public static readonly CsExpr None = new CsExpr();
 
         public override string ToString() => "";
-
-        public override string GetName() => "";
     }
 
     public class CodeBlockExpr : CsExpr

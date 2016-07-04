@@ -50,6 +50,12 @@ namespace BestForm
         public static Dom readonlyAttr =>
             filter(x => x.IsReadOnly, keyword("readonly"));
 
+        public static Dom eventAttr =>
+            filter(x => x.IsEvent, keyword("event"));
+
+        public static Dom volatileAttr =>
+            filter(x => x.IsVolatile, keyword("volatile"));
+
         public static Dom nullable =>
             filter(x => x.IsNullable, text("?"));
 
@@ -58,8 +64,11 @@ namespace BestForm
 
         public static Dom ident =>
             combine(
-                span(new { @class = "ident" }, text<Identifier>(id => id.Name)),
-                generics);
+                filter<Identifier>(id => id.IsKeyword,
+                    span(new { @class = "keyword" }, text<Identifier>(id => id.Name))),
+                filter<Identifier>(id => !id.IsKeyword,
+                    combine(span(new { @class = "ident" }, text<Identifier>(id => id.Name)),
+                    generics)));
 
         public static Dom fqn =>
             map<FQName, Lst<Identifier>>(n => n.Idents, dotSep(ident));
@@ -84,6 +93,8 @@ namespace BestForm
 
         public static Dom typeRef =>
             combine(
+                filter<TypeRef>(tr => tr.IsIn, keyword("in ")),
+                filter<TypeRef>(tr => tr.IsOut, keyword("out ")),
                 map<TypeRef, FQName>(tr => tr.Name, fqn),
                 nullable,
                 map<TypeRef, Option<ArrayDef>>(tr => tr.ArrayDef,
@@ -98,7 +109,22 @@ namespace BestForm
                     filter<Arg>(arg => arg.IsOut, keyword("out")),
                     filter<Arg>(arg => arg.IsRef, keyword("ref")),
                     map<Arg, TypeRef>(arg => arg.Type, typeRef),
-                    map<Arg, Identifier>(arg => arg.Name, ident)));
+                    text<Arg>(arg => arg.Name.ToString())),
+                map<Arg, Option<Constant>>(arg => arg.Default,
+                    option<Constant>(
+                        Some: combine(
+                            text(" = "),
+                            filter<Constant>(x => x.Value == "default",
+                                combine(keyword("default"), map<Constant, TypeRef>(c => c.Type, typeRef))),
+                            filter<Constant>(x => x.Value != "default" && x.Type.ToString() == "string",
+                                combine(
+                                    text("\""),
+                                    text<Constant>(c => c.Value),
+                                    text("\""))),
+                            filter<Constant>(x => x.Value != "default" && x.Type.ToString() != "string",
+                                combine(
+                                    text<Constant>(c => c.Value)))),
+                        None: text(""))));
 
         public static Dom delarg =>
             spaced(
@@ -142,6 +168,8 @@ namespace BestForm
                 combine(attrs, vis),
                 staticAttr,
                 readonlyAttr,
+                eventAttr,
+                volatileAttr,
                 map<FieldDef, TypeRef>(f => f.Type, typeRef),
                 map<FieldDef, Identifier>(f => f.Name, ident));
 

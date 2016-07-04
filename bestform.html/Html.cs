@@ -37,6 +37,14 @@ namespace BestForm
         public static Dom number(params Dom[] inner) =>
             span(new { @class = "number" }, inner);
 
+        public static Dom source =>
+            div( new { @class = "source-link-cont" }, 
+                tag("a", new {
+                    @class = "source-link",
+                    href = "#",
+                    onclick = attr<MethodDef>(m => $"document.getElementById('code-{m.UniqueName}').style.display='';")
+                    }, text("SOURCE")));
+
         public static Dom navPanel(params Dom[] inner) =>
             div(new { @class = "nav-panel" }, inner);
 

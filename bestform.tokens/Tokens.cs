@@ -22,7 +22,6 @@ namespace BestForm.Tokens
 
     public abstract class SrcToken
     {
-        public abstract string GetName();
     }
 
     public class SourceFile : Namespace
@@ -34,21 +33,41 @@ namespace BestForm.Tokens
         }
     }
 
+    public static class Keywords
+    {
+        public static readonly Set<string> All = Set(new[] {
+            "ctor","finalise","var","abstract","as","base",
+            "bool","break","byte","case","catch","char","checked","class",
+            "const","continue","decimal","default","delegate","do","double",
+            "else","enum","event","explicit","extern","false","finally",
+            "fixed","float","for","foreach","goto","if","implicit","in",
+            "int","interface","internal","is","lock","long","namespace","new",
+            "null","object","operator","out", "override", "params", "private",
+            "protected","public","readonly","ref","return","sbyte","sealed",
+            "short","sizeof","stackalloc","static","string","struct","switch",
+            "this","throw","true","try","typeof","uint","ulong","unchecked",
+            "unsafe","ushort","using","virtual","void","volatile","while"
+        });
+    }
+
     public class Identifier : SrcToken
     {
         public readonly string Name;
         public readonly Lst<TypeRef> GenericArgs;
+        public readonly bool IsKeyword;
 
         public Identifier(string name)
         {
             Name = name;
             GenericArgs = List<TypeRef>();
+            IsKeyword = Keywords.All.Contains(name);
         }
 
         public Identifier(string name, Lst<TypeRef> genericArgs)
         {
             Name = name;
             GenericArgs = genericArgs;
+            IsKeyword = Keywords.All.Contains(name);
         }
 
         private string GenericStr =>
@@ -57,8 +76,6 @@ namespace BestForm.Tokens
                 : $"<{System.String.Join(", ", GenericArgs)}>";
 
         public override string ToString() => $"{Name}{GenericStr}";
-
-        public override string GetName() => Name;
 
         public string UniqueName =>
             $"{Name}_" + String.Join("_", GenericArgs.Map(ga => ga.Name.ToString()));
@@ -75,7 +92,7 @@ namespace BestForm.Tokens
 
         public override string ToString() => String.Join(".", Idents);
 
-        public override string GetName() => ToString();
+        public string UniqueName => String.Join(".", Idents.Map(x => x.UniqueName));
     }
 
     public class ArrayDef : SrcToken
@@ -89,8 +106,6 @@ namespace BestForm.Tokens
 
         public override string ToString() =>
             $"[{ String.Join("", LanguageExt.List.repeat(",", Dimensions - 1)) }]";
-
-        public override string GetName() => ToString();
     }
 
     public class TypeRef : SrcToken
@@ -98,18 +113,20 @@ namespace BestForm.Tokens
         public readonly FQName Name;
         public readonly Option<ArrayDef> ArrayDef;
         public readonly bool IsNullable;
+        public readonly bool IsIn;
+        public readonly bool IsOut;
 
-        public Lst<TypeRef> GenericArgs => 
+        public Lst<TypeRef> GenericArgs =>
             Name.Idents.Last().GenericArgs;
 
-        public TypeRef(FQName name, Option<ArrayDef> arrayDef, bool isNullable)
+        public TypeRef(FQName name, Option<ArrayDef> arrayDef, bool isNullable, bool isIn, bool isOut)
         {
             Name = name;
             ArrayDef = arrayDef;
             IsNullable = isNullable;
+            IsIn = isIn;
+            IsOut = isOut;
         }
-
-        public override string GetName() => Name.GetName();
 
         public override string ToString() =>
             $"{Name}{NullStr}{ArrayStr}";
@@ -124,25 +141,29 @@ namespace BestForm.Tokens
 
         private static Lst<TypeRef> NoArgs = List<TypeRef>();
 
-        public static readonly TypeRef Final = new TypeRef(new FQName(List(new Identifier("finalise"))), None, false);
-        public static readonly TypeRef Ctor = new TypeRef(new FQName(List(new Identifier("ctor"))), None, false);
-        public static readonly TypeRef Var = new TypeRef(new FQName(List(new Identifier("var"))), None, false);
+        public static readonly TypeRef Final = new TypeRef(new FQName(List(new Identifier("finalise"))), None, false, false, false);
+        public static readonly TypeRef Ctor = new TypeRef(new FQName(List(new Identifier("ctor"))), None, false, false, false);
+        public static readonly TypeRef Var = new TypeRef(new FQName(List(new Identifier("var"))), None, false, false, false);
 
-        public static readonly TypeRef Char = new TypeRef(new FQName(List(new Identifier("System"), new Identifier("Char"))), None, false);
-        public static readonly TypeRef Short = new TypeRef(new FQName(List(new Identifier("System"), new Identifier("Int16"))), None, false);
-        public static readonly TypeRef Int = new TypeRef(new FQName(List(new Identifier("System"), new Identifier("Int32"))), None, false);
-        public static readonly TypeRef Long = new TypeRef(new FQName(List(new Identifier("System"), new Identifier("Int64"))), None, false);
+        public static readonly TypeRef Char = new TypeRef(new FQName(List(new Identifier("char"))), None, false, false, false);
+        public static readonly TypeRef Short = new TypeRef(new FQName(List(new Identifier("short"))), None, false, false, false);
+        public static readonly TypeRef Int = new TypeRef(new FQName(List(new Identifier("int"))), None, false, false, false);
+        public static readonly TypeRef Long = new TypeRef(new FQName(List(new Identifier("long"))), None, false, false, false);
 
-        public static readonly TypeRef Byte = new TypeRef(new FQName(List(new Identifier("System"), new Identifier("Byte"))), None, false);
-        public static readonly TypeRef UShort = new TypeRef(new FQName(List(new Identifier("System"), new Identifier("UInt16"))), None, false);
-        public static readonly TypeRef UInt = new TypeRef(new FQName(List(new Identifier("System"), new Identifier("UInt32"))), None, false);
-        public static readonly TypeRef ULong = new TypeRef(new FQName(List(new Identifier("System"), new Identifier("UInt64"))), None, false);
+        public static readonly TypeRef Byte = new TypeRef(new FQName(List(new Identifier("byte"))), None, false, false, false);
+        public static readonly TypeRef UByte = new TypeRef(new FQName(List(new Identifier("ubyte"))), None, false, false, false);
+        public static readonly TypeRef UShort = new TypeRef(new FQName(List(new Identifier("ushort"))), None, false, false, false);
+        public static readonly TypeRef UInt = new TypeRef(new FQName(List(new Identifier("uint"))), None, false, false, false);
+        public static readonly TypeRef ULong = new TypeRef(new FQName(List(new Identifier("ulong"))), None, false, false, false);
 
-        public static readonly TypeRef Double = new TypeRef(new FQName(List(new Identifier("System"), new Identifier("Double"))), None, false);
-        public static readonly TypeRef Float = new TypeRef(new FQName(List(new Identifier("System"), new Identifier("Single"))), None, false);
+        public static readonly TypeRef Double = new TypeRef(new FQName(List(new Identifier("double"))), None, false, false, false);
+        public static readonly TypeRef Float = new TypeRef(new FQName(List(new Identifier("float"))), None, false, false, false);
+        public static readonly TypeRef Decimal = new TypeRef(new FQName(List(new Identifier("decimal"))), None, false, false, false);
 
-        public static readonly TypeRef String = new TypeRef(new FQName(List(new Identifier("System"), new Identifier("String"))), None, false);
-        public static readonly TypeRef Bool = new TypeRef(new FQName(List(new Identifier("System"), new Identifier("Bool"))), None, false);
+        public static readonly TypeRef String = new TypeRef(new FQName(List(new Identifier("string"))), None, false, false, false);
+        public static readonly TypeRef Bool = new TypeRef(new FQName(List(new Identifier("bool"))), None, false, false, false);
+
+        public string UniqueName => Name.UniqueName;
     }
 
     public class AttributeDef : SrcToken
@@ -153,8 +174,6 @@ namespace BestForm.Tokens
         {
             Body = body;
         }
-
-        public override string GetName() => Body;
     }
 
     public class Using : SrcToken
@@ -169,8 +188,6 @@ namespace BestForm.Tokens
         }
 
         public override string ToString() => Name.ToString();
-
-        public override string GetName() => Name.GetName();
     }
 
     public class EnumMember : SrcToken
@@ -189,8 +206,6 @@ namespace BestForm.Tokens
         }
 
         public override string ToString() => Name.ToString();
-
-        public override string GetName() => Name.GetName();
     }
 
     public class EnumDef : SrcToken
@@ -214,8 +229,6 @@ namespace BestForm.Tokens
 
         public override string ToString() =>
             $"{Visibility.ToString().ToLower()} enum {Name} : {Type}";
-
-        public override string GetName() => Name.GetName();
     }
 
     public class Constant : SrcToken
@@ -230,8 +243,6 @@ namespace BestForm.Tokens
         }
 
         public override string ToString() => Value;
-
-        public override string GetName() => "const";
     }
 
     public class DelegateArg : SrcToken
@@ -247,8 +258,6 @@ namespace BestForm.Tokens
 
         public override string ToString() =>
             $"{Type} {Name.Map(x => x.ToString()).IfNone("")}";
-
-        public override string GetName() => Name.Map(x => x.GetName()).IfNone("");
     }
 
     public class Arg : SrcToken
@@ -277,7 +286,8 @@ namespace BestForm.Tokens
         public override string ToString() =>
             $"{Type} {Name}";
 
-        public override string GetName() => Name.GetName();
+        public string UniqueName =>
+            $"{Type.UniqueName}_{Name.UniqueName}";
     }
 
     public class DelegateDef : SrcToken
@@ -306,8 +316,6 @@ namespace BestForm.Tokens
         public override string ToString() =>
             $"{Visibility.ToString().ToLower()} {Type} {Name}({ArgsStr})";
 
-        public override string GetName() => Name.GetName();
-
         public string UniqueName =>
             Name.UniqueName;
     }
@@ -322,8 +330,10 @@ namespace BestForm.Tokens
         public readonly Lst<AttributeDef> Attributes;
         public readonly bool IsReadOnly;
         public readonly bool IsStatic;
+        public readonly bool IsEvent;
+        public readonly bool IsVolatile;
 
-        public FieldDef(TypeRef type, Identifier name, Vis vis, CsExpr source, Lst<AttributeDef> attributes, Option<Document> document, bool isReadOnly, bool isStatic)
+        public FieldDef(TypeRef type, Identifier name, Vis vis, CsExpr source, Lst<AttributeDef> attributes, Option<Document> document, bool isReadOnly, bool isStatic, bool isEvent, bool isVolatile)
         {
             Type = type;
             Name = name;
@@ -333,6 +343,8 @@ namespace BestForm.Tokens
             Document = document;
             IsReadOnly = isReadOnly;
             IsStatic = isStatic;
+            IsEvent = isEvent;
+            IsVolatile = isVolatile;
         }
 
         string StaticStr => IsStatic ? "static " : "";
@@ -340,8 +352,6 @@ namespace BestForm.Tokens
 
         public override string ToString() =>
             $"{Visibility.ToString().ToLower()} {StaticStr}{ReadOnlyStr}{Type} {Name}";
-
-        public override string GetName() => Name.GetName();
     }
 
     public class ConvOperatorDef : SrcToken
@@ -367,8 +377,6 @@ namespace BestForm.Tokens
 
         string ExplitStr =>
             Implicit ? "implicit" : "explict";
-
-        public override string GetName() => $"operator";
     }
 
     public class BinaryOperatorDef : SrcToken
@@ -393,8 +401,6 @@ namespace BestForm.Tokens
             Attributes = attributes;
             Document = document;
         }
-
-        public override string GetName() => $"op operator";
     }
 
     public class UnaryOperatorDef : SrcToken
@@ -418,8 +424,6 @@ namespace BestForm.Tokens
             Attributes = attributes;
             Document = document;
         }
-
-        public override string GetName() => $"op operator";
     }
 
     public class ConstDef : SrcToken
@@ -443,8 +447,6 @@ namespace BestForm.Tokens
 
         public override string ToString() =>
             $"{Visibility.ToString().ToLower()} {Type} {Name} = {Source}";
-
-        public override string GetName() => Name.GetName();
     }
 
     public class PropDef : SrcToken
@@ -507,8 +509,6 @@ namespace BestForm.Tokens
 
         public override string ToString() =>
             $"{Visibility.ToString().ToLower()} {StaticStr}{AbstractStr}{VirtualStr}{OverrideStr}{NewStr}{Type} {Name} {{{GetStr}{SetStr}}}";
-
-        public override string GetName() => Name.ToString();
     }
 
     public class Constraint : SrcToken
@@ -527,8 +527,6 @@ namespace BestForm.Tokens
 
         string ByStr =>
             String.Join(", ", By);
-
-        public override string GetName() => "constraint";
     }
 
     public class ConstrainedBy : SrcToken
@@ -546,8 +544,6 @@ namespace BestForm.Tokens
             With == "type"
                 ? Type.IfNone(() => null).ToString()
                 : With;
-
-        public override string GetName() => With;
     }
 
 
@@ -615,7 +611,7 @@ namespace BestForm.Tokens
         public override string ToString() =>
             $"{Visibility.ToString().ToLower()} {StaticStr}{AsyncStr}{AbstractStr}{VirtualStr}{OverrideStr}{NewStr}{Type} {Name}({ArgsStr})";
 
-        public override string GetName() => Name.GetName();
+        public string UniqueName => $"{Name.UniqueName}_{String.Join("_",Args.Map(x => x.UniqueName))}";
     }
 
     public class TypeDef : SrcToken
@@ -656,8 +652,6 @@ namespace BestForm.Tokens
 
         public string UniqueName =>
             Name.UniqueName;
-
-        public override string GetName() => Name.GetName();
     }
 
     public class Namespace : SrcToken
@@ -712,8 +706,6 @@ namespace BestForm.Tokens
                 );
 
         public override string ToString() => Name.ToString();
-
-        public override string GetName() => Name.GetName();
     }
 
     public class Document : SrcToken
@@ -724,7 +716,5 @@ namespace BestForm.Tokens
         {
             Comments = comments;
         }
-
-        public override string GetName() => "";
     }
 }

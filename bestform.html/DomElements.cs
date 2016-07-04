@@ -17,7 +17,8 @@ namespace BestForm
         Tag,
         Attr,
         Text,
-        Group
+        Group,
+        Markup
     }
 
     public abstract class DomElement
@@ -61,6 +62,19 @@ namespace BestForm
 
         public override DomElementType ElementType => DomElementType.Text;
         public override string ToString() => Text;
+    }
+
+    public class DomMarkup : DomElement
+    {
+        public readonly string Html;
+
+        public DomMarkup(object env, string html) : base(env)
+        {
+            Html = html;
+        }
+
+        public override DomElementType ElementType => DomElementType.Markup;
+        public override string ToString() => Html;
     }
 
     public class DomAttr<T> : DomElement

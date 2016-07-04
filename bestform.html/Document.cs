@@ -6,25 +6,29 @@ using static LanguageExt.Prelude;
 using static BestForm.Html;
 using static BestForm.TokenHtml;
 using BestForm.Tokens;
+using System.Web;
 
 namespace BestForm
 {
     public static class DocumentHtml
     {
+        public static Dom fmt(string text) =>
+            span(new { }, _ => List(new DomMarkup(_, HttpUtility.HtmlEncode(text).Replace("[CR-LF]", "<br/><br/>")) as DomElement));
+
         public static Dom doc(Func<DocumentComments, Dom> Some, Func<Dom> None) =>
             map(x => ((Option<Document>)x.Document).Map(d => d.Comments),
                 option(Some, None));
 
         public static Dom summary =>
             doc(
-                Some: c  => text(c.Summary.Map(x => x.InnerText).IfNone("")),
+                Some: c  => c.Summary.Map(x => fmt(x.InnerText)).IfNone(text("")),
                 None: () => text(""));
 
         public static Dom summaryAndTitle =>
             doc(
                 Some: c => combine(
                     sectionTitle("SUMMARY"),
-                    p(text(c.Summary.Map(x => x.InnerText).IfNone("")))),
+                    p(c.Summary.Map(x => fmt(x.InnerText)).IfNone(text("")))),
                 None: () => text(""));
 
         public static Dom returnsAndTitle =>
@@ -37,7 +41,7 @@ namespace BestForm
                         map<Tuple<TypeRef, Option<Document>>, object>(tup => new { Document = tup.Item2 },
                             doc(
                                 Some: comments => comments.Returns.Match(
-                                    Some: ret => text(ret.InnerText),
+                                    Some: ret => fmt(ret.InnerText),
                                     None: () => text("")),
                                 None: () => text(""))))));
 
@@ -48,7 +52,7 @@ namespace BestForm
                         ? text("")
                         : combine(
                             sectionTitle("REMARKS"),
-                            combine("", c.Remarks.Map(r => text(r.InnerText)).ToArray()))),
+                            combine("", c.Remarks.Map(r => fmt(r.InnerText)).ToArray()))),
                 None: () => text(""));
 
         public static Dom remarksSectionAndTitle =>
@@ -59,7 +63,7 @@ namespace BestForm
                         : combine(
                             section(
                                 sectionTitle("REMARKS"),
-                                combine("", c.Remarks.Map(r => text(r.InnerText)).ToArray())))),
+                                combine("", c.Remarks.Map(r => fmt(r.InnerText)).ToArray())))),
                 None: () => text(""));
 
         public static Dom exceptionsAndTitle =>
@@ -72,7 +76,7 @@ namespace BestForm
                             combine(c.Exceptions.Map(e => 
                                 code(
                                     div(new { @class="member-title" }, text(e.Attr("cref").Map(x => x.Value).IfNone(""))), 
-                                    div(new { @class="normal" }, text(e.InnerText)))).ToArray()))),
+                                    div(new { @class="normal" }, fmt(e.InnerText)))).ToArray()))),
                 None: () => text(""));
 
         public static Dom param(Dom Some, Dom None) =>
