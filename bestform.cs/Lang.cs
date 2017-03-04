@@ -204,18 +204,31 @@ namespace BestForm.CS
             select a.Map(x => x.Freeze()).IfNone(List<AttributeDef>());
 
         Parser<ArrayDef> arrayDef =>
-            from cs in either(
-                attempt(symbol("[]")).Map(_ => new string[0].AsEnumerable()),
-                brackets(many1(comma)))
-            select new ArrayDef(cs.Count() + 1);
+            choice(
+                attempt(symbol("[][]")).Map(_ => new ArrayDef(2, false)),
+                attempt(symbol("[]")).Map(_ => new ArrayDef(1, false)),
+                brackets(many1(comma)).Map(x => new ArrayDef(x.Count() + 1, true)));
 
-        Parser<TypeRef> typeRef =>
-            from i in optional(reserved("in"))
-            from o in optional(reserved("out"))
-            from t in fqn
+        Parser<TypeRef> tupleRef =>
+            from items in parens(
+                commaSep1(
+                    from t in lazyp(() => typeRef)
+                    from n in optional(identifier)
+                    select (t, n)))
             from n in optional(symbol("?"))
             from a in optional(arrayDef)
-            select new TypeRef(t, a, n.IsSome, i.IsSome, o.IsSome);
+            select TypeRef.ValueTuple(items, a, n.IsSome);
+
+        Parser<TypeRef> typeRef =>
+            either(
+                attempt(tupleRef),
+                attempt(
+                    from i in optional(reserved("in"))
+                    from o in optional(reserved("out"))
+                    from t in fqn
+                    from n in optional(symbol("?"))
+                    from a in optional(arrayDef)
+                    select new TypeRef(t, a, n.IsSome, i.IsSome, o.IsSome)));
 
         Parser<Arg> arg =>
             from a in attributes

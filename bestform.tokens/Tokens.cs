@@ -98,14 +98,18 @@ namespace BestForm.Tokens
     public class ArrayDef : SrcToken
     {
         public readonly int Dimensions;
+        public readonly bool Inner;
 
-        public ArrayDef(int dimensions)
+        public ArrayDef(int dimensions, bool inner)
         {
             Dimensions = dimensions;
+            Inner = inner;
         }
 
         public override string ToString() =>
-            $"[{ String.Join("", LanguageExt.List.repeat(",", Dimensions - 1)) }]";
+            Inner
+                ? $"[{ String.Join("", LanguageExt.List.repeat(",", Dimensions - 1)) }]"
+                : String.Join("", LanguageExt.List.repeat("[]", Dimensions - 1));
     }
 
     public class TypeRef : SrcToken
@@ -164,6 +168,9 @@ namespace BestForm.Tokens
         public static readonly TypeRef Bool = new TypeRef(new FQName(List(new Identifier("bool"))), None, false, false, false);
 
         public string UniqueName => Name.UniqueName;
+
+        public static TypeRef ValueTuple(Lst<(TypeRef Type, Option<Identifier> Name)> items, Option<ArrayDef> arrayDef, bool isNullable) =>
+            new TypeRef(new FQName(List(new Identifier("ValueTuple", items.Map(x => x.Type)))), arrayDef, isNullable, false, false);
     }
 
     public class AttributeDef : SrcToken
