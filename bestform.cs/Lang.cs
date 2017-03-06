@@ -529,7 +529,7 @@ namespace BestForm.CS
             from atr in attributes
             from vis in visibility
             from sta in reserved("static")
-            from imp in either(reserved("implicit"), reserved("explit"))
+            from imp in either(reserved("implicit"), reserved("explicit"))
             from opr in reserved("operator")
             from typ in typeRef
             from arg in oneArg
