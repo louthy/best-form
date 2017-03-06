@@ -111,7 +111,21 @@ namespace BestForm.CS
 
         public Either<ParserError,DocumentComments> Parse(Lst<string> lines)
         {
-            var text = String.Join("", lines.Map(x => String.IsNullOrWhiteSpace(x) ? "[CR-LF]" : x))   
+            lines = lines.Map(x => String.IsNullOrWhiteSpace(x) ? "[CR-LF]" : x);
+
+            lines = lines.Map(x =>
+            {
+                if(x.StartsWith("    "))
+                {
+                    return "[CODE]" + x/*.Replace(" ", "[NBSP]") */+ "[/CODE]";
+                }
+                else
+                {
+                    return x;
+                }
+            });
+
+            var text = String.Join("", lines)   
                              .Replace("<para>","")
                              .Replace("</para>", "[CR-LF]");
             var res = Parser(text.ToPString());

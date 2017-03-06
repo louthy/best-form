@@ -13,7 +13,12 @@ namespace BestForm
     public static class DocumentHtml
     {
         public static Dom fmt(string text) =>
-            span(new { }, _ => List(new DomMarkup(_, HttpUtility.HtmlEncode(text).Replace("[CR-LF]", "<br/><br/>")) as DomElement));
+            span(new { }, _ => List(new DomMarkup(_, HttpUtility.HtmlEncode(text)
+                .Replace("[CR-LF]", "<br/><br/>")
+                .Replace("[NBSP]", "&nbsp;")
+                .Replace("[CODE]", "<div class='code-line'>")
+                .Replace("[/CODE]", "</div>")
+                ) as DomElement));
 
         public static Dom doc(Func<DocumentComments, Dom> Some, Func<Dom> None) =>
             map(x => ((Option<Document>)x.Document).Map(d => d.Comments),
