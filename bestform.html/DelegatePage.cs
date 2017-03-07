@@ -71,7 +71,7 @@ namespace BestForm
                     div(new { @class = "arg-type" }, map<Tuple<DelegateDef, DelegateArg>, TypeRef>(a => a.Item2.Type, typeRef))),
                 map<Tuple<DelegateDef, DelegateArg>, Tuple<Option<Document>, DelegateArg>>(tup => Tuple(tup.Item1.Document, tup.Item2),
                     DocumentHtml.delegateParam(
-                        Some: div(new { @class = "arg-desc" }, text<Tag>(t => t.InnerText)),
+                        Some: div(new { @class = "arg-desc" }, DocumentHtml.fmttag()),
                         None: text(""))));
 
         public static Dom nav =>

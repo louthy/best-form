@@ -13,12 +13,19 @@ namespace BestForm
     public static class DocumentHtml
     {
         public static Dom fmt(string text) =>
-            span(new { }, _ => List(new DomMarkup(_, HttpUtility.HtmlEncode(text)
-                .Replace("[CR-LF]", "<br/><br/>")
-                .Replace("[NBSP]", "&nbsp;")
-                .Replace("[CODE]", "<div class='code-line'>")
-                .Replace("[/CODE]", "</div>")
-                ) as DomElement));
+            span(new { }, _ => List(new DomMarkup(_, FixupCodeTags(text)) as DomElement));
+
+        public static Dom fmttag() =>
+            span(new { }, t => List(new DomMarkup(t, FixupCodeTags((t as Tag).InnerText)) as DomElement));
+
+        public static string FixupCodeTags(string text) =>
+            HttpUtility.HtmlEncode(text)
+                       .Replace("[CR-LF]", "<br/><br/>")
+                       .Replace("[NBSP]", "&nbsp;")
+                       .Replace("[CODE]", "<div class='code-line'>")
+                       .Replace("[/CODE]", "</div>")
+                       .Replace("[INLINE_CODE]", "<span class='code-inline'>")
+                       .Replace("[/INLINE_CODE]", "</span>");
 
         public static Dom doc(Func<DocumentComments, Dom> Some, Func<Dom> None) =>
             map(x => ((Option<Document>)x.Document).Map(d => d.Comments),
@@ -26,7 +33,7 @@ namespace BestForm
 
         public static Dom summary =>
             doc(
-                Some: c  => c.Summary.Map(x => fmt(x.InnerText)).IfNone(text("")),
+                Some: c => c.Summary.Map(x => fmt(x.InnerText)).IfNone(text("")),
                 None: () => text(""));
 
         public static Dom summaryAndTitle =>
@@ -78,10 +85,10 @@ namespace BestForm
                         ? text("")
                         : combine(
                             sectionTitle("EXCEPTIONS"),
-                            combine(c.Exceptions.Map(e => 
+                            combine(c.Exceptions.Map(e =>
                                 code(
-                                    div(new { @class="member-title" }, text(e.Attr("cref").Map(x => x.Value).IfNone(""))), 
-                                    div(new { @class="normal" }, fmt(e.InnerText)))).ToArray()))),
+                                    div(new { @class = "member-title" }, text(e.Attr("cref").Map(x => x.Value).IfNone(""))),
+                                    div(new { @class = "normal" }, fmt(e.InnerText)))).ToArray()))),
                 None: () => text(""));
 
         public static Dom param(Dom Some, Dom None) =>

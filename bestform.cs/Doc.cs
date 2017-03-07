@@ -109,15 +109,48 @@ namespace BestForm.CS
                 )
             select new DocumentComments(tags);
 
+
+        Parser<string> inlineCodeBlock =>
+            from open in ch('`')
+            from code in attempt(asString(many(satisfy(c => c != '`'))))
+            from clos in ch('`')
+            select code;
+
+        Parser<string> textUntilCodeBlock =>
+            attempt(asString(many(satisfy(c => c != '`'))));
+
+        Parser<Lst<(bool IsCode, string Text)>> inlineCode =>
+            from prel   in textUntilCodeBlock
+            from blocks in many(
+                from code in inlineCodeBlock
+                from post in textUntilCodeBlock
+                select List((true, code), (false, post)))
+            select ((false, prel)).Cons(from x in blocks
+                                        from y in x
+                                        select y).Freeze();
+
         public Either<ParserError,DocumentComments> Parse(Lst<string> lines)
         {
             lines = lines.Map(x => String.IsNullOrWhiteSpace(x) ? "[CR-LF]" : x);
 
             lines = lines.Map(x =>
             {
+                var coderes = parse(inlineCode, x);
+                if(coderes.IsFaulted || coderes.Reply.State.Index < coderes.Reply.State.EndIndex)
+                {
+                    return x;
+                }
+                return String.Join("", coderes.Reply.Result.Map(tup =>
+                    tup.IsCode
+                        ? "[INLINE_CODE]" + tup.Text + "[/INLINE_CODE]"
+                        : tup.Text));
+            });
+
+            lines = lines.Map(x =>
+            {
                 if(x.StartsWith("    "))
                 {
-                    return "[CODE]" + x/*.Replace(" ", "[NBSP]") */+ "[/CODE]";
+                    return "[CODE]" + x + "[/CODE]";
                 }
                 else
                 {

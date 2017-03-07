@@ -113,11 +113,11 @@ namespace BestForm
 
         public static Dom combine(string sep, params Dom[] inner) => inp =>
             List(new DomGroup(
-                    inp,
-                    sep,
-                    from x in inner
-                    from y in x(inp)
-                    select y) as DomElement);
+                inp,
+                sep,
+                from x in inner
+                from y in x(inp)
+                select y) as DomElement);
 
         public static Dom combine(params Dom[] inner) => 
             combine("", inner);

@@ -91,7 +91,7 @@ namespace BestForm
                     div(new { @class = "arg-type" }, map<Tuple<MethodDef, Arg>, TypeRef>(a => a.Item2.Type, typeRef))),
                 map<Tuple<MethodDef, Arg>, Tuple<Option<Document>, Arg>>(tup => Tuple(tup.Item1.Document, tup.Item2),
                     DocumentHtml.param(
-                        Some: div(new { @class = "arg-desc" }, text<Tag>(t => t.InnerText)),
+                        Some: div(new { @class = "arg-desc" }, DocumentHtml.fmttag()),
                         None: text(""))));
 
         public static Dom constrainedBy =>
