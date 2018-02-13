@@ -635,7 +635,7 @@ namespace BestForm.CS
             def = GenLanguageDef.Empty.With(
                 CommentStart: "/*",
                 CommentEnd: "*/",
-                CommentLine: "// ",
+                CommentLine: "//",
                 NestedComments: false,
                 IdentStart: choice(letter, ch('_'), ch('@')),
                 IdentLetter: either(alphaNum, oneOf("_'")),
