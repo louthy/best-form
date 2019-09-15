@@ -606,17 +606,26 @@ namespace BestForm.CS
             from c in semi
             select new Using(s.IsSome, n);
 
-        Parser<Namespace> namespaceDef =>
+        Parser<UsingAlias> usingAliasDef =>
+            from _ in reserved("using")
+            from a in identifier
+            from e in symbol("=")
+            from s in fqn
+            from c in semi
+            select new UsingAlias(s, a);
+
+        Parser <Namespace> namespaceDef =>
             from _ in reserved("namespace")
             from n in fqn
             from b in braces(namespaceInnerDef)
-            select new Namespace(n, b.Usings, b.Namespaces, b.Types, b.Enums, b.Delegates);
+            select new Namespace(n, b.Usings, b.UsingAliases, b.Namespaces, b.Types, b.Enums, b.Delegates);
 
         Parser<Namespace> namespaceInnerDef =>
             from toks in many1(
                 choice(
                     attempt(namespaceDef.asToken()),
                     attempt(usingDef.asToken()),
+                    attempt(usingAliasDef.asToken()),
                     attempt(typeDef.asToken()),
                     attempt(enumDef.asToken()),
                     attempt(delegateDef.asToken()),
@@ -625,6 +634,7 @@ namespace BestForm.CS
             select new Namespace(
                 new FQName(List<Identifier>()),
                 toklist.Filter(t => t is Using).Map(t => t as Using),
+                toklist.Filter(t => t is UsingAlias).Map(t => t as UsingAlias),
                 toklist.Filter(t => t is Namespace).Map(t => t as Namespace),
                 toklist.Filter(t => t is TypeDef).Map(t => t as TypeDef),
                 toklist.Filter(t => t is EnumDef).Map(t => t as EnumDef),
@@ -674,7 +684,7 @@ namespace BestForm.CS
             Parser =
                 from __ in whiteSpace
                 from ns in namespaceInnerDef
-                select new SourceFile(ns.Usings, ns.Namespaces, ns.Types, ns.Enums, ns.Delegates);
+                select new SourceFile(ns.Usings, ns.UsingAliases, ns.Namespaces, ns.Types, ns.Enums, ns.Delegates);
         }
 
         /// <summary>

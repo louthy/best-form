@@ -131,6 +131,7 @@ namespace BestForm.CLI
             new Namespace(
                 lhs.Name,
                 lhs.Usings + rhs.Usings,
+                lhs.UsingAliases + rhs.UsingAliases,
                 lhs.Namespaces + rhs.Namespaces,
                 lhs.Types + rhs.Types,
                 lhs.Enums + rhs.Enums,

@@ -26,9 +26,9 @@ namespace BestForm.Tokens
 
     public class SourceFile : Namespace
     {
-        public SourceFile(Lst<Using> usings, Lst<Namespace> namespaces, Lst<TypeDef> types, Lst<EnumDef> enums, Lst<DelegateDef> delegates)
+        public SourceFile(Lst<Using> usings, Lst<UsingAlias> usingAliases, Lst<Namespace> namespaces, Lst<TypeDef> types, Lst<EnumDef> enums, Lst<DelegateDef> delegates)
             :
-            base(new FQName(List<Identifier>()), usings, namespaces, types, enums, delegates)
+            base(new FQName(List<Identifier>()), usings, usingAliases, namespaces, types, enums, delegates)
         {
         }
     }
@@ -195,6 +195,28 @@ namespace BestForm.Tokens
         }
 
         public override string ToString() => Name.ToString();
+    }
+
+    public class UsingAlias : SrcToken
+
+    {
+
+        public readonly FQName Source;
+
+        public readonly Identifier Alias;
+
+
+
+        public UsingAlias(FQName source, Identifier alias)
+
+        {
+
+            Source = source;
+
+            Alias = alias;
+
+        }
+
     }
 
     public class EnumMember : SrcToken
@@ -665,15 +687,17 @@ namespace BestForm.Tokens
     {
         public readonly FQName Name;
         public readonly Lst<Using> Usings;
+        public readonly Lst<UsingAlias> UsingAliases;
         public readonly Lst<Namespace> Namespaces;
         public readonly Lst<TypeDef> Types;
         public readonly Lst<EnumDef> Enums;
         public readonly Lst<DelegateDef> Delegates;
 
-        public Namespace(FQName name, Lst<Using> usings, Lst<Namespace> namespaces, Lst<TypeDef> types, Lst<EnumDef> enums, Lst<DelegateDef> delegates)
+        public Namespace(FQName name, Lst<Using> usings, Lst<UsingAlias> usingAliases, Lst<Namespace> namespaces, Lst<TypeDef> types, Lst<EnumDef> enums, Lst<DelegateDef> delegates)
         {
             Name = name;
             Usings = usings;
+            UsingAliases = usingAliases;
             Namespaces = namespaces;
             Types = types;
             Enums = enums;
@@ -690,7 +714,7 @@ namespace BestForm.Tokens
                     : state.Add(tn, type);
             });
 
-            return new Namespace(Name, Usings, Namespaces, types.Values.Freeze(), Enums, Delegates);
+            return new Namespace(Name, Usings, UsingAliases, Namespaces, types.Values.Freeze(), Enums, Delegates);
         }
 
         /// <summary>
