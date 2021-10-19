@@ -232,7 +232,7 @@ pre {
 }
 
 #package-header .caption {
-    background: url(hslogo-16.png) no-repeat 0em;
+    background: url(logo.png) no-repeat 0em;
     color: white;
     margin: 0 2em;
     font-weight: normal;
@@ -406,8 +406,8 @@ div#style-menu-holder {
 #interface h5 + div.top {
     margin-top: 1em;
 }
-#interface .src .selflink,
-#interface .src .link {
+.src .selflink,
+.src .link {
     float: right;
     color: #919191;
     background: #f0f0f0;
@@ -415,7 +415,7 @@ div#style-menu-holder {
     margin: 0 -0.5em 0 0;
     -moz-user-select: none;
 }
-#interface .src .selflink {
+.src .selflink {
     border-left: 1px solid #919191;
     margin: 0 -0.5em 0 0.5em;
 }
