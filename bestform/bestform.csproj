@@ -20,6 +20,8 @@
     <ItemGroup>
       <None Remove="ocean.css" />
       <EmbeddedResource Include="ocean.css" />
+      <None Remove="logo.png" />
+      <EmbeddedResource Include="logo.png" />
     </ItemGroup>
 
 </Project>

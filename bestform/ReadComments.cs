@@ -17,9 +17,15 @@ namespace BestForm
 {
     public class ReadComments
     {
+        /// <summary>
+        /// Read all the document elements we care about from the source folders
+        /// </summary>
         public static async Task<Project> FromProject(Project project) =>
             project with {Data = await FromFolder(project, project.Root)};
         
+        /// <summary>
+        /// Read all the document elements we care about from the source folder
+        /// </summary>
         public static async Task<ProjectData> FromFolder(Project project, string path)
         {
             if (project.FoldersToExclude.Contains(Path.GetFileName(path).ToLower())) return ProjectData.Empty; 
@@ -30,12 +36,18 @@ namespace BestForm
             return (data1 + data2).Fold(ProjectData.Empty, (s, d) => s with {Files = s.Files + d.Files});
         }
 
+        /// <summary>
+        /// Read all the document elements we care about from the source file
+        /// </summary>
         public static async Task<ProjectData> FromFile(Project project, string path)
         {
             var src = await System.IO.File.ReadAllTextAsync(path);
             return FromSource(path.Substring(project.Root.Length + 1), src, project);
         }
         
+        /// <summary>
+        /// Read all the document elements we care about from the source text
+        /// </summary>
         static ProjectData FromSource(string path, string src, Project project)
         {
             var tree    = SyntaxFactory.ParseSyntaxTree(src, path: path);
@@ -50,6 +62,9 @@ namespace BestForm
             return ProjectData.Empty with {Files = HashMap<string, File>((path, new File(enums + delegates + records + structs + interfaces + classes)))};
         }
         
+        /// <summary>
+        /// Get all documentation and member names
+        /// </summary>
         static Seq<Member> FromMembers<MEM>(SyntaxTree tree) where MEM : MemberDeclarationSyntax =>
             tree.GetRoot()
                 .DescendantNodes()
@@ -59,6 +74,9 @@ namespace BestForm
                 .ToSeq()
                 .Strict();
 
+        /// <summary>
+        /// Extract the documentation, name, and child member documentation
+        /// </summary>
         static Member FromMember(SyntaxNode node)
         {
             var memberDecls = node.ChildNodes()
@@ -92,7 +110,10 @@ namespace BestForm
             return new Member(name, mnode, Merge(comments), members);
         }
 
-        static string NameFromDeclaration(MemberDeclarationSyntax? m) =>
+        /// <summary>
+        /// Get the name of the member
+        /// </summary>
+        public static string NameFromDeclaration(MemberDeclarationSyntax? m) =>
             m switch
             {
                 null                           => "",
@@ -109,14 +130,24 @@ namespace BestForm
                 OperatorDeclarationSyntax c    => $"{c.OperatorToken}",
                 EventDeclarationSyntax c       => c.Identifier.Text,
                 IndexerDeclarationSyntax c     => "this",
-                _                              => $"[Unknown declaration type: {m.ToString()}]",
+                NamespaceDeclarationSyntax c   => c.Name.ToString(),
+                _                              => "",
             };
 
+        /// <summary>
+        /// Merge a sequence of documents into one
+        /// </summary>
         static Document Merge(Seq<Document> docs) =>
             docs.IsEmpty
                 ? Document.Empty 
                 : new Document(docs.Head.Loc, docs.Tail.Fold(docs.Head.Sections, (s, x) => s + x.Sections));
 
+        /// <summary>
+        /// Parse an entire XML documentation comment into a Document
+        /// </summary>
+        /// <remarks>
+        /// Always succeeds, but will print any errors to the console
+        /// </remarks>
         static Document ParseComment(Location loc, string text)
         {
             var lines = Lines(text);
@@ -138,9 +169,15 @@ namespace BestForm
             }
         }
 
+        /// <summary>
+        /// Split the text into lines
+        /// </summary>
         static Seq<string> Lines(string text) =>
             text.Split('\n').ToSeq();
 
+        /// <summary>
+        /// Quickly shave off the leading whitespace and comment token
+        /// </summary>
         static string RemoveLeadingToken(string text)
         {
             text = text.Trim();
@@ -149,6 +186,9 @@ namespace BestForm
             return text;
         }
 
+        /// <summary>
+        /// Convert from SectionType to text  
+        /// </summary>
         static string tagText(SectionType type) =>
             type switch
             {
@@ -165,6 +205,9 @@ namespace BestForm
                 _                     => throw new NotSupportedException()
             };
 
+        /// <summary>
+        /// Convert from text to SectionType 
+        /// </summary>
         static SectionType textTag(string type) =>
             type switch
             {
@@ -181,17 +224,29 @@ namespace BestForm
                 _           => throw new NotSupportedException()
             };
 
+        /// <summary>
+        /// Supported XML tag keywords
+        /// </summary>
         readonly static HashSet<string> keywords = 
             HashSet("param", "typeparam", "summary", "returns", "remarks", "para", "code", "c", "example", "exception");
 
+        /// <summary>
+        /// Parse a token
+        /// </summary>
         static Parser<A> token<A>(Parser<A> p) =>
             from x in p
             from _ in spaces
             select x;
 
+        /// <summary>
+        /// Parse a symbol
+        /// </summary>
         static Parser<string> symbol(string x) =>
             token(str(x)).label(x);
-        
+
+        /// <summary>
+        /// Parse an identifier, as long as it doesn't match a keyword
+        /// </summary>
         static readonly Parser<string> ident = token(from id in asString(many1(letter))
                                                      from rs in keywords.Contains(id)
                                                                     ? unexpected<string>("keyword")
@@ -199,6 +254,9 @@ namespace BestForm
                                                      select id)
                                                     .label("identifier");
 
+        /// <summary>
+        /// Parse a any keyword (keywords are the known XML document tags)
+        /// </summary>
         static readonly Parser<string> keyword = token(from kw in asString(many1(letter))
                                                        from rs in keywords.Contains(kw)
                                                                       ? result(kw)
@@ -206,12 +264,18 @@ namespace BestForm
                                                        select rs)
                                                       .label($"{string.Join(", ", keywords)}");
 
+        /// <summary>
+        /// Parse a known keyword (keywords are the known XML document tags)
+        /// </summary>
         static Parser<string> keywordExact(string kw) =>
             token(from _ in symbol(kw)
                   from x in notFollowedBy(letter)
                   select kw)
                .label(kw);
 
+        /// <summary>
+        /// Parse a single XML attibute
+        /// </summary>
         static readonly Parser<Attr> attribute = (from id in ident
                                                   from eq in symbol("=")
                                                   from op in symbol("\"")
@@ -220,19 +284,31 @@ namespace BestForm
                                                   select new Attr(id, vl))
                                                  .label("attribute");
 
+        /// <summary>
+        /// Parse XML attributes
+        /// </summary>
         static readonly Parser<Seq<Attr>> attributes = many(attribute);
 
+        /// <summary>
+        /// Parses any text, as long as it's not the less-than token
+        /// </summary>
         static readonly Parser<Section> text = 
             asString(many1(satisfy(ch => ch != '<')))
                .Map(static t => new Text(t) as Section)
                .label("documentation text");
  
+        /// <summary>
+        /// Parses a single less-than token, that is not followed by '/'
+        /// </summary>
         static readonly Parser<Section> lessThan = 
             (from lt in ch('<')
              from _ in notFollowedBy(ch('/'))
              select new Text("<") as Section)
             .label("'<' not followed by a '/'");
 
+        /// <summary>
+        /// Parses an XML tag
+        /// </summary>
         static readonly Parser<Section> tag = token(from opn in symbol("<")
                                                     from kw1 in keyword
                                                     from attrs in attributes
@@ -244,18 +320,35 @@ namespace BestForm
                                                     select new Tag(textTag(kw1), attrs, val) as Section)
                                                    .label("XML documentation tag");
 
+        /// <summary>
+        /// Parses the inner section of an XML element
+        /// </summary>
         static Parser<Seq<Section>> innerValue =>
             many(choice(attempt(tag),
                         attempt(text),
                         attempt(lessThan)))
                .Map(joinText);
 
+        /// <summary>
+        /// Document parser
+        /// </summary>
+        /// <remarks>Parses complete XML documentation, with special care for rogue tag-opening tokens</remarks>
+        static readonly Parser<Document> document = from ts in innerValue
+                                                    from _ in eof
+                                                    select new Document(Location.None, ts);
+
+        /// <summary>
+        /// Aggregates adjacent text sections 
+        /// </summary>
+        /// <param name="sections">Sections</param>
+        /// <returns>Seq of sections with the Text sections aggregated</returns>
         static Seq<Section> joinText(Seq<Section> sections)
         {
             if (sections.IsEmpty) return sections;
             if (sections.Tail.IsEmpty) return sections;
             var nsections = new System.Collections.Generic.List<Section>();
 
+            // ugly, but fast
             foreach (var s in sections)
             {
                 if (s is Text t1)
@@ -277,10 +370,12 @@ namespace BestForm
             return Seq(nsections);
         }
 
-        static readonly Parser<Document> document = from ts in innerValue
-                                                    from _ in eof
-                                                    select new Document(null, ts);
-
+        /// <summary>
+        /// Breakpoint parser, because Rider can't break on LINQ 
+        /// </summary>
+        /// <param name="f"></param>
+        /// <typeparam name="A"></typeparam>
+        /// <returns></returns>
         static Parser<A> bp<A>(Func<PString, A> f) =>
             new Parser<A>(inp => ParserResult.EmptyOK<A>(f(inp), inp, null));
     }

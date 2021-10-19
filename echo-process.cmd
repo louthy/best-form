@@ -1,6 +1,7 @@
-cd I:\Dev\best-form\bestform\bin\Debug
-bestform.exe I:\dev\echo-process\Echo.Process I:\Dev\louthy.github.io\echo-process\Echo.Process
-bestform.exe I:\dev\echo-process\Echo.Process.Owin I:\Dev\louthy.github.io\echo-process\Echo.Process.Owin
-bestform.exe I:\dev\echo-process\Echo.Process.Redis I:\Dev\louthy.github.io\echo-process\Echo.Process.Redis
-bestform.exe I:\dev\echo-process\Echo.ProcessJS I:\Dev\louthy.github.io\echo-process\Echo.ProcessJS
+cd I:\dev\best-form\BestForm\bin\Release\net5.0
+bestform.exe "Echo.Process" "I:\Dev\echo-process\Echo.Process" "I:\dev\louthy.github.io\echo-process" "https://github.com/louthy/echo-process/tree/main"
+bestform.exe "Echo.Process.Redis" "I:\Dev\echo-process\Echo.Process.Redis" "I:\dev\louthy.github.io\echo-process" "https://github.com/louthy/echo-process/tree/main"
+bestform.exe "Echo.Process.ProcessJS" "I:\Dev\echo-process\Echo.Process.Owin" "I:\dev\louthy.github.io\echo-process" "https://github.com/louthy/echo-process/tree/main"
+bestform.exe "Echo.Process.Owin" "I:\Dev\echo-process\Echo.Process.Owin" "I:\dev\louthy.github.io\echo-process" "https://github.com/louthy/echo-process/tree/main"
+bestform.exe "Echo.Process.AspNetCore" "I:\Dev\echo-process\Echo.Process.AspNetCore" "I:\dev\louthy.github.io\echo-process" "https://github.com/louthy/echo-process/tree/main"
 pause

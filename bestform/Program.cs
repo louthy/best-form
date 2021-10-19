@@ -20,8 +20,7 @@ namespace BestForm
             var sw = new Stopwatch();
             sw.Start();
 
-            var project = Project.New(name, src, dest, repo, GetCSS());
-
+            var project = Project.New(name, src, dest, repo, GetCSS(), GetLogo());
             project = await ReadComments.FromProject(project);
             project = DocGen.Run(project);
 
@@ -36,6 +35,15 @@ namespace BestForm
             if (stream == null) return "";
             using var reader       = new StreamReader(stream);
             return reader.ReadToEnd();
+        }
+        
+        static byte[] GetLogo()
+        {
+            var       assembly = Assembly.GetExecutingAssembly();
+            using var stream   = assembly.GetManifestResourceStream($"BestForm.logo.png");
+            if (stream == null) return new byte[0];
+            using var reader = new BinaryReader(stream);
+            return reader.ReadBytes((int)stream.Length);
         }
     }
 }

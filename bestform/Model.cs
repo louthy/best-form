@@ -1,11 +1,10 @@
 using System;
-using System.Collections.Generic;
 using System.Web;
 using LanguageExt;
 using Microsoft.CodeAnalysis;
+using System.Collections.Generic;
 using static LanguageExt.Prelude;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-
 
 namespace BestForm
 {
@@ -19,7 +18,8 @@ namespace BestForm
         Folder? Folder, 
         string TargetFolder, 
         string Repo,
-        string CSS)
+        string CSS,
+        byte[] Logo)
     {
         public static readonly Project Empty = new Project(
             "",
@@ -29,10 +29,11 @@ namespace BestForm
             null,
             "",
             "",
-            "");
+            "",
+            new byte[0]);
 
-        public static Project New(string name, string root, string targetFolder, string repo, string css) =>
-            Project.Empty with {Name = name, Root = root, TargetFolder = targetFolder, Repo = repo, CSS = css};
+        public static Project New(string name, string root, string targetFolder, string repo, string css, byte[] logo) =>
+            Project.Empty with {Name = name, Root = root, TargetFolder = targetFolder, Repo = repo, CSS = css, Logo = logo};
     }
 
     /// <summary>
@@ -46,15 +47,126 @@ namespace BestForm
     /// <summary>
     /// Single member with documentation.  May have child members in the case of classes and structs
     /// </summary>
-    public record Member(string Name, MemberDeclarationSyntax Syntax, Document Comments, Seq<Member> Members);
+    public record Member(string Name, MemberDeclarationSyntax Syntax, Document Comments, Seq<Member> Members)
+    {
+        public string AnchorName =>
+            Syntax.Parent switch
+            {
+                MemberDeclarationSyntax p => $"{ReadComments.NameFromDeclaration(p)}_{TypeParamsCount(p)}_{Name}_{TypeParamsCount()}",
+                _ =>$"{Name}_{TypeParamsCount()}"
+            };
+                
+        public string TypeParamsToText() =>
+            Syntax switch
+            {
+                ClassDeclarationSyntax c     => c.TypeParameterList?.ToString() ?? "",
+                InterfaceDeclarationSyntax c => c.TypeParameterList?.ToString() ?? "",
+                StructDeclarationSyntax c    => c.TypeParameterList?.ToString() ?? "",
+                DelegateDeclarationSyntax c  => c.TypeParameterList?.ToString() ?? "",
+                RecordDeclarationSyntax c    => c.TypeParameterList?.ToString() ?? "",
+                MethodDeclarationSyntax c    => c.TypeParameterList?.ToString() ?? "",
+                _                            => "",
+            };        
+                
+        public int TypeParamsCount() =>
+            TypeParamsCount(Syntax);        
+        
+        static int TypeParamsCount(MemberDeclarationSyntax syntax) =>
+            syntax switch
+            {
+                ClassDeclarationSyntax c     => c.TypeParameterList?.Parameters.Count ?? 0,
+                InterfaceDeclarationSyntax c => c.TypeParameterList?.Parameters.Count ?? 0,
+                StructDeclarationSyntax c    => c.TypeParameterList?.Parameters.Count ?? 0,
+                DelegateDeclarationSyntax c  => c.TypeParameterList?.Parameters.Count ?? 0,
+                RecordDeclarationSyntax c    => c.TypeParameterList?.Parameters.Count ?? 0,
+                MethodDeclarationSyntax c    => c.TypeParameterList?.Parameters.Count ?? 0,
+                _                            => 0,
+            };
+        
+        public Html ConstraintsToHtml() =>
+            Html.div2("constraints",
+                      ConstraintsToText() switch
+                      {
+                          "" => Html.empty,
 
+                          var cs => cs.Split("where")
+                                      .Filter(x => !string.IsNullOrWhiteSpace(x))
+                                      .Map(c => Html.div2("constraint",
+                                                          Html.keyword("where"),
+                                                          Html.span(Html.text(c))))
+                                      .Join()
+                      });
+
+        public string ConstraintsToText() =>
+            Syntax switch
+            {
+                ClassDeclarationSyntax c     => c.ConstraintClauses.Count == 0 ? "" : c.ConstraintClauses.ToString(),
+                InterfaceDeclarationSyntax c => c.ConstraintClauses.Count == 0 ? "" : c.ConstraintClauses.ToString(),
+                StructDeclarationSyntax c    => c.ConstraintClauses.Count == 0 ? "" : c.ConstraintClauses.ToString(),
+                DelegateDeclarationSyntax c  => c.ConstraintClauses.Count == 0 ? "" : c.ConstraintClauses.ToString(),
+                RecordDeclarationSyntax c    => c.ConstraintClauses.Count == 0 ? "" : c.ConstraintClauses.ToString(),
+                MethodDeclarationSyntax c    => c.ConstraintClauses.Count == 0 ? "" : c.ConstraintClauses.ToString(),
+                _                            => "",
+            };
+    }
+
+    /// <summary>
+    /// Folder of files
+    /// </summary>
+    public record Folder(Map<string, File> Files, Map<string, Folder> Folders, int FileCount)
+    {
+        public static readonly Folder Empty = new(default, default, 0);
+    }
+
+    /// <summary>
+    /// Represents a source file
+    /// </summary>
     public record File(Seq<Member> Members);
 
+    /// <summary>
+    /// A document - many sections
+    /// </summary>
     public record Document(Location Loc, Seq<Section> Sections)
     {
         public static readonly Document Empty = new Document(Location.None, Seq<Section>());
     }
 
+    /// <summary>
+    /// Types of the sections of documents
+    /// </summary>
+    public enum SectionType
+    {
+        Text,
+        Returns,
+        Param,
+        TypeParam,
+        Summary,
+        Paragraph,
+        Remarks,
+        Code,
+        Code2,
+        Example,
+        Exception
+    }
+
+    /// <summary>
+    /// Section of a document
+    /// </summary>
+    public abstract record Section(SectionType Type);
+    
+    /// <summary>
+    /// Tagged section of a document
+    /// </summary>
+    public record Tag(SectionType Type, Seq<Attr> Attrs, Seq<Section> Inner) : Section(Type);
+    
+    /// <summary>
+    /// Pure text section of a document
+    /// </summary>
+    public record Text(string Value) : Section(SectionType.Text);
+
+    /// <summary>
+    /// Name / Value attribute
+    /// </summary>
     public record Attr(string Name, string Value)
     {
         public static Attr id(string id) =>
@@ -73,26 +185,9 @@ namespace BestForm
             $"{Name}=\"{Value}\"";
     }
 
-    public abstract record Section(SectionType Type);
-
-    public record Tag(SectionType Type, Seq<Attr> Attrs, Seq<Section> Inner) : Section(Type);
-    public record Text(string Value) : Section(SectionType.Text);
-
-    public enum SectionType
-    {
-        Text,
-        Returns,
-        Param,
-        TypeParam,
-        Summary,
-        Paragraph,
-        Remarks,
-        Code,
-        Code2,
-        Example,
-        Exception
-    }
-
+    /// <summary>
+    /// HTML virtual dom
+    /// </summary>
     public abstract record Html
     {
         static Html tag(string name, Seq<Attr> attrs, params Html[] inner) => new HtmlTag(name, attrs, Seq(inner));
@@ -100,7 +195,6 @@ namespace BestForm
         static Html tag(string name, params Html[] inner) => new HtmlTag(name, Empty, Seq(inner));
         static Html tag(string name, Seq<Html> inner) => new HtmlTag(name, Empty, inner);
         public static Html text(string text) => new HtmlText(HttpUtility.HtmlEncode(text));
-        
         public static Html div(Seq<Attr> attrs, params Html[] inner) => tag("div", attrs, inner);
         public static Html div(Seq<Attr> attrs, Seq<Html>inner) => tag("div", attrs, inner);
         public static Html div(params Html[] inner) => tag("div", Seq(inner));
@@ -128,7 +222,7 @@ namespace BestForm
         public static Html p(params Html[] inner) => tag("p", inner);
         public static Html em(params Html[] inner) => tag("em", inner);
         public static Html def(params Html[] inner) => span("def", inner);
-        public static Html def(string t) => span("def", text(t));
+        public static Html def(string id, string txt) => tag("a", Seq(Attr.id(id), Attr.@class("def")), text(txt));
         public static Html table(params Html[] inner) => tag("table", inner);
         public static Html tbody(params Html[] inner) => tag("tbody", inner);
         public static Html tr(params Html[] inner) => tag("tr", inner);
@@ -136,7 +230,7 @@ namespace BestForm
         public static Html td2(string @class, params Html[] inner) => tag("td", Seq(Attr.colspan(2), Attr.@class(@class)), inner);
         public static Html a(string label, string href) => a(href, text(label));
         public static Html a(string href, params Html[] inner) => tag("a", Seq(Attr.href(href), Attr.@class("link")), inner);
-        public static Html a(string @class, string label, string href) => tag("a", Seq1(Attr.@class(@class)), text(label));
+        public static Html a(string @class, string label, string href) => tag("a", Seq(Attr.href(href), Attr.@class(@class)), text(label));
         public static Html html(params Html[] inner) => tag("html", Seq1(new Attr("xmlns","http://www.w3.org/1999/xhtml")), inner);
         public static Html body(params Html[] inner) => tag("body", Seq1(Attr.@class("js-enabled")), inner);
         public static Html ul(string @class, string id, params Html[] inner) => tag("ul", Seq(Attr.@class(@class), Attr.id(id)), inner);
@@ -205,23 +299,37 @@ namespace BestForm
             };
     }
 
+    /// <summary>
+    /// HTML tag virtual DOM element
+    /// </summary>
     public record HtmlTag(string Name, Seq<Attr> Attrs, Seq<Html> Inner) : Html;
+
+    /// <summary>
+    /// HTML text virtual DOM element
+    /// </summary>
     public record HtmlText(string Text) : Html;
+
+    /// <summary>
+    /// Zero element of a virtual DOM
+    /// </summary>
     public record HtmlEmpty : Html;
+    
+    /// <summary>
+    /// Raw HTML source text DOM element
+    /// </summary>
     public record HtmlRaw(string Html) : Html;
+    
+    /// <summary>
+    /// Many HTML DOM elements
+    /// </summary>
     public record HtmlMany(Seq<Html> Items) : Html;
 
-    public record Folder(Map<string, File> Files, Map<string, Page> Pages, Map<string, Folder> Folders, int FileCount)
-    {
-        public static readonly Folder Empty = new(default, default, default, 0);
-    }
-
-    public record Page(string Name, Html Document);
-
+    /// <summary>
+    /// HTML DOM extensions
+    /// </summary>
     public static class HtmlExt
     {
         public static Html Join(this IEnumerable<Html> xs) =>
             new HtmlMany(xs.ToSeq());
     }
-
 }

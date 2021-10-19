@@ -63,6 +63,7 @@ namespace BestForm
             var text  = Html.render(page);
             F.WriteAllText(index, text);
             F.WriteAllText(Path.Combine(path, "style.css"), project.CSS);
+            F.WriteAllBytes(Path.Combine(path, "logo.png"), project.Logo);
             return unit;
         }
 
@@ -116,7 +117,8 @@ namespace BestForm
                                           Html.keyword(DeclTypeText(m.Syntax)),
                                           FullTypeToText(m),
                                           Html.a("Source", $"{urlRoot}#L{m.Syntax.GetLocation().GetLineSpan().StartLinePosition.Line}"),
-                                          ConstraintsToText(m)),
+                                          Html.a("selflink", "#", $"#{m.AnchorName}"),
+                                          m.ConstraintsToHtml()),
                                    MakeDocumentInToHtml(m),
                                    MakeSubMembers<EnumDeclarationSyntax>(project, m.Members, urlRoot, "Enums"),
                                    MakeSubMembers<DelegateDeclarationSyntax>(project, m.Members, urlRoot, "Delegates"),
@@ -223,21 +225,24 @@ namespace BestForm
         static Html FullTypeToText(Member m) =>
             m.Syntax switch
             {
-                ClassDeclarationSyntax c       => Html.span(Html.def($"{m.Name}") + Generics(m)),
-                InterfaceDeclarationSyntax c   => Html.span(Html.def($"{m.Name}") + Generics(m)),
-                StructDeclarationSyntax c      => Html.span(Html.def($"{m.Name}") + Generics(m)),
-                DelegateDeclarationSyntax c    => Html.span(Html.def($"{m.Name}") + Generics(m)),
-                EnumDeclarationSyntax c        => Html.span(Html.def($"{m.Name}")),
-                RecordDeclarationSyntax c      => Html.span(Html.def($"{m.Name}") + Generics(m) + Params(c.ParameterList)),
-                MethodDeclarationSyntax c      => Type(c.ReturnType) + Html.def($"{m.Name}") + Generics(m) + Params(c.ParameterList),
-                FieldDeclarationSyntax c       => Type(c.Declaration.Type) + Html.def($"{m.Name}"),
-                PropertyDeclarationSyntax c    => Type(c.Type) + Html.def($"{m.Name}"),
-                ConstructorDeclarationSyntax c => Html.def($"{m.Name}") + Params(c.ParameterList),
-                OperatorDeclarationSyntax c    => Html.def($"{m.Name}") + Params(c.ParameterList),
-                EventDeclarationSyntax c       => Type(c.Type) + Html.def($"{m.Name}"),
+                ClassDeclarationSyntax c       => MemberName(m) + Generics(m),
+                InterfaceDeclarationSyntax c   => MemberName(m) + Generics(m),
+                StructDeclarationSyntax c      => MemberName(m) + Generics(m),
+                DelegateDeclarationSyntax c    => MemberName(m) + Generics(m),
+                EnumDeclarationSyntax c        => MemberName(m),
+                RecordDeclarationSyntax c      => MemberName(m) + Generics(m) + Params(c.ParameterList),
+                MethodDeclarationSyntax c      => Type(c.ReturnType) + MemberName(m) + Generics(m) + Params(c.ParameterList),
+                FieldDeclarationSyntax c       => Type(c.Declaration.Type) + MemberName(m),
+                PropertyDeclarationSyntax c    => Type(c.Type) + MemberName(m),
+                ConstructorDeclarationSyntax c => MemberName(m) + Params(c.ParameterList),
+                OperatorDeclarationSyntax c    => MemberName(m) + Params(c.ParameterList),
+                EventDeclarationSyntax c       => Type(c.Type) + MemberName(m),
                 IndexerDeclarationSyntax c     => Html.text("[") + Type(c.Type) + Html.text("]"),
                 _                              => Html.empty,
             };
+
+        static Html MemberName(Member m) =>
+            Html.def(m.AnchorName, m.Name);
         
         static Html Type(TypeSyntax t) =>
             new HtmlRaw(
@@ -248,7 +253,7 @@ namespace BestForm
         
         static Html Generics(Member m) =>
             new HtmlRaw(
-                HttpUtility.HtmlEncode(TypeParamsToText(m.Syntax))
+                HttpUtility.HtmlEncode(m.TypeParamsToText())
                            .Replace("&lt;", "<span class='generics'>&lt;</span>")
                            .Replace("&gt;", "<span class='generics'>&gt;</span>")
                            .Replace(", ", "<span class='comma'>, </span>"));
@@ -263,20 +268,6 @@ namespace BestForm
                                          .Replace(")", "<span class='parens'>)</span>")
                                          .Replace(", ", "<span class='comma'>, </span>"));
 
-        static Html ConstraintsToText(Member m) =>
-            Html.div2("constraints",
-                      ConstraintsToText(m.Syntax) switch
-                      {
-                          "" => Html.empty,
-
-                          var cs => cs.Split("where")
-                                      .Filter(x => !string.IsNullOrWhiteSpace(x))
-                                      .Map(c => Html.div2("constraint",
-                                                          Html.keyword("where"),
-                                                          Html.span(Html.text(c))))
-                                      .Join()
-                      });
-        
         static string DeclTypeText(MemberDeclarationSyntax m) =>
             m switch
             {
@@ -296,30 +287,6 @@ namespace BestForm
                 IndexerDeclarationSyntax c     => "this",
                 _                              => $"[Unknown declaration type: {m.ToString()}]",
             };        
-        
-        static string TypeParamsToText(MemberDeclarationSyntax m) =>
-            m switch
-            {
-                ClassDeclarationSyntax c     => c.TypeParameterList?.ToString() ?? "",
-                InterfaceDeclarationSyntax c => c.TypeParameterList?.ToString() ?? "",
-                StructDeclarationSyntax c    => c.TypeParameterList?.ToString() ?? "",
-                DelegateDeclarationSyntax c  => c.TypeParameterList?.ToString() ?? "",
-                RecordDeclarationSyntax c    => c.TypeParameterList?.ToString() ?? "",
-                MethodDeclarationSyntax c    => c.TypeParameterList?.ToString() ?? "",
-                _                            => "",
-            };        
-
-        static string ConstraintsToText(MemberDeclarationSyntax m) =>
-            m switch
-            {
-                ClassDeclarationSyntax c     => c.ConstraintClauses.Count == 0 ? "" : c.ConstraintClauses.ToString(),
-                InterfaceDeclarationSyntax c => c.ConstraintClauses.Count == 0 ? "" : c.ConstraintClauses.ToString(),
-                StructDeclarationSyntax c    => c.ConstraintClauses.Count == 0 ? "" : c.ConstraintClauses.ToString(),
-                DelegateDeclarationSyntax c  => c.ConstraintClauses.Count == 0 ? "" : c.ConstraintClauses.ToString(),
-                RecordDeclarationSyntax c    => c.ConstraintClauses.Count == 0 ? "" : c.ConstraintClauses.ToString(),
-                MethodDeclarationSyntax c    => c.ConstraintClauses.Count == 0 ? "" : c.ConstraintClauses.ToString(),
-                _                            => "",
-            };
 
         static Html MakeDocumentInToHtml(Member m)
         {
