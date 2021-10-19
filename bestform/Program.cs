@@ -1,78 +1,41 @@
 ﻿using System;
-using System.IO;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using LanguageExt.Parsec;
 using LanguageExt;
+using System.Diagnostics;
+using System.IO;
+using System.Reflection;
+using System.Threading.Tasks;
 using static LanguageExt.Prelude;
-using BestForm.Tokens;
 
-namespace BestForm.CLI
+namespace BestForm
 {
     class Program
     {
-        static void Main(string[] args)
+        static async Task Main(string[] args)
         {
-            if( args.Length != 2)
-            {
-                Console.WriteLine("bestform.cli <source-code-path> <output-path>");
-                return;
-            }
+            var name = args.Length < 4 ? @"LanguageExt.Core" : args[0];
+            var src  = args.Length < 4 ? @"I:\dev\language-ext\LanguageExt.Core" : args[1];
+            var dest = args.Length < 4 ? @"I:\dev\louthy.github.io-2\language-ext" : args[2];
+            var repo = args.Length < 4 ? "https://github.com/louthy/language-ext/tree/main" : args[3];
+            
+            var sw = new Stopwatch();
+            sw.Start();
 
-            var lang = new CS.Lang();
+            var project = Project.New(name, src, dest, repo, GetCSS());
 
-            var results = (from file in Files(args[0])//.Where(x => x.EndsWith("\\Either.cs"))
-                           let src = ReadFile(file)
-                           select lang.Parser.Run(src).MapLeft(err =>Tuple(err, Path.GetFileName(file)))).AsParallel().Freeze();
+            project = await ReadComments.FromProject(project);
+            project = DocGen.Run(project);
 
-            Console.ForegroundColor = ConsoleColor.Red;
-            results.Lefts().Iter(tup => Console.WriteLine($"{tup.Item2}: {tup.Item1}"));
-            Console.ForegroundColor = ConsoleColor.White;
-
-            HtmlDocBuilder.Run(args[1],results.Rights().Freeze());
+            sw.Stop();
+            Console.WriteLine(TimeSpan.FromMilliseconds(sw.ElapsedMilliseconds));
         }
-
-        static string ReadFile(string path) =>
-            String.Join("\n", File.ReadAllLines(path).Map(l => l.Trim().StartsWith("#") ? "" : l));
-
-        static string PrintResult(string path, Either<ParserError, SourceFile> result) =>
-            result.Match(
-                Right: res =>
-                {
-                    var msg = $"{Path.GetFileName(path)}: success";
-                    Console.ForegroundColor = ConsoleColor.Green;
-                    Console.WriteLine(msg);
-                    Console.ForegroundColor = ConsoleColor.White;
-                    return msg;
-                },
-                Left: err =>
-                {
-                    var msg = $"{Path.GetFileName(path)}: {err}";
-                    Console.ForegroundColor = ConsoleColor.Red;
-                    Console.WriteLine(msg);
-                    Console.ForegroundColor = ConsoleColor.White;
-                    return msg;
-                });
-
-        static IEnumerable<string> Files(string path) =>
-            Directory.GetFiles(path, "*.cs").Concat(
-            (from files in Directory.GetDirectories(path)
-                                    .Filter(x => !x.EndsWith("\\bin") && !x.EndsWith("\\obj"))
-                                    .Map(Files)
-             from file in files
-             select file));
-    }
-
-    public static class ParserExt
-    {
-        public static Either<ParserError, SourceFile> Run(this Parser<SourceFile> p, string source)
+        
+        static string GetCSS()
         {
-            var res = p(source.ToPString());
-            return res.IsFaulted || res.Reply.State.ToString().Length > 0
-                ? Left<ParserError, SourceFile>(res.Reply.Error)
-                : Right<ParserError, SourceFile>(res.Reply.Result);
+            var       assembly     = Assembly.GetExecutingAssembly();
+            using var stream       = assembly.GetManifestResourceStream($"BestForm.ocean.css");
+            if (stream == null) return "";
+            using var reader       = new StreamReader(stream);
+            return reader.ReadToEnd();
         }
     }
 }
