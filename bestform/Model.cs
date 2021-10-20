@@ -234,11 +234,16 @@ namespace BestForm
         public static Html html(params Html[] inner) => tag("html", Seq1(new Attr("xmlns","http://www.w3.org/1999/xhtml")), inner);
         public static Html body(params Html[] inner) => tag("body", Seq1(Attr.@class("js-enabled")), inner);
         public static Html ul(string @class, string id, params Html[] inner) => tag("ul", Seq(Attr.@class(@class), Attr.id(id)), inner);
+        public static Html ul(params Html[] inner) => tag("ul", inner);
         public static Html li(params Html[] inner) => tag("li", inner);
         public static Html title(string t) => tag("title", text(t));
         public static Html many(params Html[] inner) => new HtmlMany(inner.ToSeq());
         public static Html many(Seq<Html> inner) => new HtmlMany(inner);
         public static Html code(params Html[] inner) => tag("code", inner);
+
+        public static Html nowrap(params Html[] inner) =>
+            div2("nowrap", inner);
+        
         public readonly static Html empty = new HtmlEmpty();
 
         public static Html head(string titleText) =>

@@ -17,7 +17,7 @@ namespace BestForm
         {
             project = project with { Folder = MakeFolder(project, Folder.Empty, 1) };
 
-            CreateFolders(project, project.Name, project.Folder);
+            CreateFolders(project, project.Name, project.Folder, 1);
             
             return project;
         }
@@ -25,30 +25,31 @@ namespace BestForm
         /// <summary>
         /// Walk the folder data structure and create the real folders
         /// </summary>
-        static Unit CreateFolders(Project project, string name, Folder folder)
+        static Unit CreateFolders(Project project, string name, Folder folder, int depth)
         {
             if (folder.FileCount == 0) return unit;
             var path = Path.Combine(project.TargetFolder, name);
             Directory.CreateDirectory(path);
             foreach (var f in folder.Folders)
             {
-                CreateFolders(project, Path.Combine(name, f.Key), f.Value);
+                CreateFolders(project, Path.Combine(name, f.Key), f.Value, depth + 1);
             }
 
-            CreateDocPage(project, name, folder);
+            CreateDocPage(project, name, folder, depth);
 
             return unit;
         }
 
-        static Unit CreateDocPage(Project project, string name, Folder folder)
+        static Unit CreateDocPage(Project project, string name, Folder folder, int depth)
         {
             var urlRoot = GetWebName(project, name);
             var path    = Path.Combine(project.TargetFolder, name);
             var head    = Html.head(name);
-            var header  = Html.header(project.Name, urlRoot, "../index.html", GetRoot(name));
+            var header  = Html.header(project.Name, urlRoot, "../index.html", GetRoot(depth));
 
             var content = Html.div("content",
                                    MakeModuleHeader(name),
+                                   MakeTableOfContents(project, folder),
                                    Html.div2("interface",
                                              MakeModuleLinks(project, folder),
                                              MakeMemberDocuments(project, folder, urlRoot)));
@@ -100,6 +101,26 @@ namespace BestForm
                 Html.table(Html.tbody(fs)));
         }
 
+        static Html MakeTableOfContents(Project project, Folder folder) =>
+            Html.div("table-of-contents",
+                Html.p("caption", Html.text("Contents")),         
+                Html.ul(
+                folder.Files
+                          .Map(f => MakeTableOfContentsTopLevel(project, f.Value))
+                          .Join()));
+
+        static Html MakeTableOfContentsTopLevel(Project project, File file) =>
+            file.Members
+                .Map(m => Html.li(Html.a($"#{m.AnchorName}", Html.nowrap(ShortTypeToText(m)))) +
+                          MakeTableOfContentsMembers(project, m))
+                .Join();
+
+        static Html MakeTableOfContentsMembers(Project project, Member m) =>
+            Html.ul(
+                m.Members
+                 .Map(m => Html.li(Html.a($"#{m.AnchorName}", Html.nowrap(ShortTypeToText(m)))))
+                 .Join());
+        
         static Html MakeMemberDocuments(Project project, Folder folder, string urlRoot) =>
             folder.Files
                   .Map(f => MakeMemberDocuments(project, f.Value, $"{urlRoot}/{f.Key}"))
@@ -167,7 +188,7 @@ namespace BestForm
                               .Filter(t => t.Attrs.Find(a => a.Name == "name").IsSome)
                               .Map(t =>
                                        Html.tr(
-                                           Html.td("src clearfix", Html.keyword("type param")),
+                                           Html.td("src clearfix", Html.keyword("type")),
                                            Html.td("src clearfix",
                                                    Html.span("inst-left",
                                                              Html.def(
@@ -241,8 +262,33 @@ namespace BestForm
                 _                              => Html.empty,
             };
 
+        static Html ShortTypeToText(Member m) =>
+            m.Syntax switch
+            {
+                ClassDeclarationSyntax c       => MemberNameText(m) + Generics(m),
+                InterfaceDeclarationSyntax c   => MemberNameText(m) + Generics(m),
+                StructDeclarationSyntax c      => MemberNameText(m) + Generics(m),
+                DelegateDeclarationSyntax c    => MemberNameText(m) + Generics(m),
+                EnumDeclarationSyntax c        => MemberNameText(m),
+                RecordDeclarationSyntax c      => MemberNameText(m) + Generics(m) + Params(c.ParameterList),
+                MethodDeclarationSyntax c      => MemberNameText(m) + Generics(m) + Params(c.ParameterList),
+                FieldDeclarationSyntax c       => MemberNameText(m),  // Type(c.Declaration.Type) +
+                PropertyDeclarationSyntax c    => MemberNameText(m),  // Type(c.Type) + 
+                ConstructorDeclarationSyntax c => MemberNameText(m) + Params(c.ParameterList),
+                OperatorDeclarationSyntax c    => MemberNameText(m) + Params(c.ParameterList),
+                EventDeclarationSyntax c       => MemberNameText(m),  //Type(c.Type) + 
+                IndexerDeclarationSyntax c     => Html.text("this []"),
+                _                              => Html.empty,
+            };
+
         static Html MemberName(Member m) =>
             Html.def(m.AnchorName, m.Name);
+        
+        static Html MemberNameText(Member m) =>
+            Html.text(m.Name);
+        
+        static Html ShortParams(ParameterListSyntax p) =>
+            Html.empty;
         
         static Html Type(TypeSyntax t) =>
             new HtmlRaw(
@@ -361,8 +407,8 @@ namespace BestForm
         /// <summary>
         /// Find the parent page
         /// </summary>
-        static string GetRoot(string name) =>
-            $"/{name.Split("\\").Head()}/index.html";
+        static string GetRoot(int depth) =>
+            $"{string.Concat(Range(0, depth).Map(_ => "../"))}index.html";
 
         /// <summary>
         /// Walks the files that were found in the first pass and makes them into a Folder tree structure with Files

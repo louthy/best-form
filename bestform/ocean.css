@@ -844,6 +844,11 @@ div#style-menu-holder {
 }
 
 .markdown-bullet:before {
-    content: '\ffed';
-    margin-right: 0.5em;
+}
+
+.nowrap {
+    -o-text-overflow:ellipsis;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+    overflow:hidden;
 }
