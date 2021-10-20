@@ -1,17 +1,18 @@
 using System;
 using System.IO;
 using System.Linq;
-using System.Threading.Tasks;
 using LanguageExt;
 using LanguageExt.Parsec;
 using LanguageExt.Pretty;
 using Microsoft.CodeAnalysis;
+using System.Threading.Tasks;
 using static LanguageExt.Prelude;
 using Microsoft.CodeAnalysis.CSharp;
 using static LanguageExt.Parsec.Char;
 using static LanguageExt.Parsec.Prim;
 using static LanguageExt.Parsec.Token;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using F = System.IO.File;
 
 namespace BestForm
 {
@@ -33,7 +34,22 @@ namespace BestForm
             var data1 = (await files.SequenceParallel(p => FromFile(project, p))).ToSeq().Strict();
             var folders = Directory.GetDirectories(path);
             var data2 = (await folders.SequenceParallel(f => FromFolder(project, f))).ToSeq().Strict();
-            return (data1 + data2).Fold(ProjectData.Empty, (s, d) => s with {Files = s.Files + d.Files});
+
+            var readMePath = Path.Combine(path, "README.md");
+            var readMe = F.Exists(readMePath)
+                             ? HashMap<string, string>((TrimReadMe(readMePath.Substring(project.Root.Length)), 
+                                                        await F.ReadAllTextAsync(readMePath)))
+                             : Empty;
+
+            return (data1 + data2).Fold(ProjectData.Empty with { ReadMe = readMe }, 
+                                        (s, d) => s with {Files = s.Files + d.Files, 
+                                                          ReadMe = s.ReadMe + d.ReadMe});
+        }
+
+        static string TrimReadMe(string x)
+        {
+            var y = x.Substring(0, x.Length - "\\readme.md".Length).TrimStart('\\');
+            return y;
         }
 
         /// <summary>
@@ -41,7 +57,7 @@ namespace BestForm
         /// </summary>
         public static async Task<ProjectData> FromFile(Project project, string path)
         {
-            var src = await System.IO.File.ReadAllTextAsync(path);
+            var src = await F.ReadAllTextAsync(path);
             return FromSource(path.Substring(project.Root.Length + 1), src, project);
         }
         

@@ -46,9 +46,11 @@ namespace BestForm
             var path    = Path.Combine(project.TargetFolder, name);
             var head    = Html.head(name);
             var header  = Html.header(project.Name, urlRoot, "../index.html", GetRoot(depth));
+            var readMe  = folder.ReadMe;
 
             var content = Html.div("content",
                                    MakeModuleHeader(name),
+                                   readMe == "" ? Html.empty : MarkdownText(readMe),
                                    MakeTableOfContents(project, folder),
                                    Html.div2("interface",
                                              MakeModuleLinks(project, folder),
@@ -414,8 +416,12 @@ namespace BestForm
         /// Walks the files that were found in the first pass and makes them into a Folder tree structure with Files
         /// at the leaves
         /// </summary>
-        static Folder MakeFolder(Project project, Folder parent, int depth) =>
-            project.Data.Files.Fold(parent, (p, f) => MakeNode(project, f.Key, f.Value, depth, p));
+        static Folder MakeFolder(Project project, Folder parent, int depth)
+        {
+            var folder = project.Data.Files.Fold(parent, (p, f) => MakeNode(project, f.Key, f.Value, depth, p));
+            folder = folder with {ReadMe = project.Data.ReadMe.Find(folder.Path).IfNone("")};
+            return folder;
+        }
 
         /// <summary>
         /// Recursive walks a path to add it to the Folder tree
@@ -438,12 +444,23 @@ namespace BestForm
                                                     .AddOrUpdate(
                                                          parts[depth - 1],
                                                          Some: exists => MakeNode(project, path, file, depth + 1, exists).UpdateFileCount(),
-                                                         None: () => MakeNode(project, path, file, depth + 1, Folder.Empty).UpdateFileCount())
+                                                         None: () => MakeNode(project, path, file, depth + 1, 
+                                                                              Folder.Empty with 
+                                                                              { 
+                                                                                Path = string.Join("\\",parts.Take(depth)),
+                                                                                ReadMe = FindReadMe(project, string.Join("\\",parts.Take(depth)))
+                                                                              }).UpdateFileCount())
                                 },
                        
                        _ => folder
                    };
         }
+
+        static string FindReadMe(Project project, string path) =>
+            project.Data
+                   .ReadMe
+                   .Find(path)
+                   .IfNone("");
 
         static Folder UpdateFileCount(this Folder f) =>
             f with {FileCount = f.FileCount + f.Folders.Map(s => s.FileCount).Sum()};

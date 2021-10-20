@@ -39,9 +39,9 @@ namespace BestForm
     /// <summary>
     /// Represents the whole project and contains the context as the application does its thing
     /// </summary>
-    public record ProjectData(HashMap<string, File> Files)
+    public record ProjectData(HashMap<string, File> Files, HashMap<string, string> ReadMe)
     {
-        public static readonly ProjectData Empty = new ProjectData(HashMap<string, File>());
+        public static readonly ProjectData Empty = new ProjectData(HashMap<string, File>(), HashMap<string, string>());
     }
 
     /// <summary>
@@ -113,9 +113,9 @@ namespace BestForm
     /// <summary>
     /// Folder of files
     /// </summary>
-    public record Folder(Map<string, File> Files, Map<string, Folder> Folders, int FileCount)
+    public record Folder(string Path, Map<string, File> Files, Map<string, Folder> Folders, string ReadMe, int FileCount)
     {
-        public static readonly Folder Empty = new(default, default, 0);
+        public static readonly Folder Empty = new("", default, default, "", 0);
     }
 
     /// <summary>
