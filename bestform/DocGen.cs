@@ -139,7 +139,7 @@ namespace BestForm
                                    Html.p("src",
                                           Html.keyword(DeclTypeText(m.Syntax)),
                                           FullTypeToText(m),
-                                          Html.a("Source", $"{urlRoot}#L{m.Syntax.GetLocation().GetLineSpan().StartLinePosition.Line}"),
+                                          Html.a("Source", $"{urlRoot}#L{m.Syntax.GetLocation().GetLineSpan().StartLinePosition.Line + 1}"),
                                           Html.a("selflink", "#", $"#{m.AnchorName}"),
                                           m.ConstraintsToHtml()),
                                    MakeDocumentInToHtml(m),
