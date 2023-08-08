@@ -1,13 +1,14 @@
-using System;
-using System.IO;
 using System.Linq;
-using System.Reflection;
 using System.Web;
+using BestForm.Model;
 using LanguageExt;
 using Markdig;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using static LanguageExt.Prelude;
+using static BestForm.Model.Html;
 using F = System.IO.File;
+using D = System.IO.Directory;
+using P = System.IO.Path;
 
 namespace BestForm
 {
@@ -28,11 +29,11 @@ namespace BestForm
         static Unit CreateFolders(Project project, string name, Folder folder, int depth)
         {
             if (folder.FileCount == 0) return unit;
-            var path = Path.Combine(project.TargetFolder, name);
-            Directory.CreateDirectory(path);
+            var path = P.Combine(project.TargetFolder, name);
+            D.CreateDirectory(path);
             foreach (var f in folder.Folders)
             {
-                CreateFolders(project, Path.Combine(name, f.Key), f.Value, depth + 1);
+                CreateFolders(project, P.Combine(name, f.Key), f.Value, depth + 1);
             }
 
             CreateDocPage(project, name, folder, depth);
@@ -43,30 +44,25 @@ namespace BestForm
         static Unit CreateDocPage(Project project, string name, Folder folder, int depth)
         {
             var urlRoot = GetWebName(project, name);
-            var path    = Path.Combine(project.TargetFolder, name);
+            var path    = P.Combine(project.TargetFolder, name);
             var head    = Html.head(name);
             var header  = Html.header(project.Name, urlRoot, "../index.html", GetRoot(depth));
             var readMe  = folder.ReadMe;
 
-            var content = Html.div("content",
-                                   MakeModuleHeader(name),
-                                   readMe == "" ? Html.empty : MarkdownText(readMe),
-                                   MakeTableOfContents(project, folder),
-                                   Html.div2("interface",
-                                             MakeModuleLinks(project, folder),
-                                             MakeMemberDocuments(project, folder, urlRoot)));
+            var content = div("content",
+                              MakeModuleHeader(name),
+                              readMe == "" ? Html.empty : MarkdownText(readMe),
+                              MakeTableOfContents(project, folder),
+                              div2("interface",
+                                  MakeModuleLinks(project, folder),
+                                  MakeMemberDocuments(project, folder, urlRoot)));
 
-            var page = Html.html(
-                head, 
-                Html.body(
-                    header,
-                    content));
- 
-            var index = Path.Combine(path, "index.html");
-            var text  = Html.render(page);
+            var page = html(head, body(header, content));
+            var index = P.Combine(path, "index.html");
+            var text  = render(page);
             F.WriteAllText(index, text);
-            F.WriteAllText(Path.Combine(path, "style.css"), project.CSS);
-            F.WriteAllBytes(Path.Combine(path, "logo.png"), project.Logo);
+            F.WriteAllText(P.Combine(path, "style.css"), project.CSS);
+            F.WriteAllBytes(P.Combine(path, "logo.png"), project.Logo);
             return unit;
         }
 
@@ -76,51 +72,47 @@ namespace BestForm
 
             var hdr = parts.Fold((Seq<Html>(), parts.Length - 1),
                                  (h, p) =>
-                                     (h.Item1.Add(Html.a(p, string.Concat(LanguageExt.List.repeat("../", h.Item2)) + "index.html")), h.Item2 - 1))
+                                     (h.Item1.Add(a(p, string.Concat(LanguageExt.List.repeat("../", h.Item2)) + "index.html")), h.Item2 - 1))
                            .Item1
-                           .Intersperse(Html.span(Html.text(" ► ")))
+                           .Intersperse(span(text(" ► ")))
                            .Join();
 
-            return Html.moduleHeader(hdr);
+            return moduleHeader(hdr);
         }
 
         static Html MakeModuleLinks(Project project, Folder folder)
         {
             if (folder.Folders.IsEmpty) return Html.empty;
 
-            var title = Html.h1("Sub modules");
+            var title = h1("Sub modules");
 
             var fs = folder.Folders
-                           .Map(f =>
-                                    Html.tr(
-                                        Html.td("src clearfix",
-                                                Html.span("inst-left",
-                                                          Html.a(f.Key, $"{f.Key}\\index.html")))))
+                           .Map(f => tr(td("src clearfix", span("inst-left", a(f.Key, $"{f.Key}\\index.html")))))
                            .Join();
 
-            return Html.many(
+            return many(
                 title,
-                Html.table(Html.tbody(fs)));
+                table(tbody(fs)));
         }
 
         static Html MakeTableOfContents(Project project, Folder folder) =>
-            Html.div("table-of-contents",
-                Html.p("caption", Html.text("Contents")),         
-                Html.ul(
+            div("table-of-contents",
+                p("caption", text("Contents")),         
+                ul(
                 folder.Files
                           .Map(f => MakeTableOfContentsTopLevel(project, f.Value))
                           .Join()));
 
         static Html MakeTableOfContentsTopLevel(Project project, File file) =>
             file.Members
-                .Map(m => Html.li(Html.a($"#{m.AnchorName}", Html.nowrap(ShortTypeToText(m)))) +
+                .Map(m => li(a($"#{m.AnchorName}", nowrap(ShortTypeToText(m)))) +
                           MakeTableOfContentsMembers(project, m))
                 .Join();
 
         static Html MakeTableOfContentsMembers(Project project, Member m) =>
-            Html.ul(
+            ul(
                 m.Members
-                 .Map(m => Html.li(Html.a($"#{m.AnchorName}", Html.nowrap(ShortTypeToText(m)))))
+                 .Map(m => li(a($"#{m.AnchorName}", nowrap(ShortTypeToText(m)))))
                  .Join());
         
         static Html MakeMemberDocuments(Project project, Folder folder, string urlRoot) =>
@@ -135,27 +127,26 @@ namespace BestForm
 
         static Html MakeMemberDocument(Project project, Member m, string urlRoot)
         {
-            var member = Html.div2("top",
-                                   Html.p("src",
-                                          Html.keyword(DeclTypeText(m.Syntax)),
-                                          FullTypeToText(m),
-                                          Html.a("Source", $"{urlRoot}#L{m.Syntax.GetLocation().GetLineSpan().StartLinePosition.Line + 1}"),
-                                          Html.a("selflink", "#", $"#{m.AnchorName}"),
-                                          m.ConstraintsToHtml()),
-                                   MakeDocumentInToHtml(m),
-                                   MakeSubMembers<EnumDeclarationSyntax>(project, m.Members, urlRoot, "Enums"),
-                                   MakeSubMembers<DelegateDeclarationSyntax>(project, m.Members, urlRoot, "Delegates"),
-                                   MakeSubMembers<EventDeclarationSyntax>(project, m.Members, urlRoot, "Events"),
-                                   MakeSubMembers<FieldDeclarationSyntax>(project, m.Members, urlRoot, "Fields"),
-                                   MakeSubMembers<IndexerDeclarationSyntax>(project, m.Members, urlRoot, "Indexers"),
-                                   MakeSubMembers<PropertyDeclarationSyntax>(project, m.Members, urlRoot, "Properties"),
-                                   MakeSubMembers<ConstructorDeclarationSyntax>(project, m.Members, urlRoot, "Constructors"),
-                                   MakeSubMembers<MethodDeclarationSyntax>(project, m.Members, urlRoot, "Methods"),
-                                   MakeSubMembers<OperatorDeclarationSyntax>(project, m.Members, urlRoot, "Operators"),
-                                   MakeSubMembers<InterfaceDeclarationSyntax>(project, m.Members, urlRoot, "Interfaces"),
-                                   MakeSubMembers<StructDeclarationSyntax>(project, m.Members, urlRoot, "Structs"),
-                                   MakeSubMembers<RecordDeclarationSyntax>(project, m.Members, urlRoot, "Records"),
-                                   MakeSubMembers<ClassDeclarationSyntax>(project, m.Members, urlRoot, "Classes"));
+            var member = div2("top",
+                            p("src", keyword(DeclTypeText(m.Syntax)),
+                                     FullTypeToText(m),
+                                     a("Source", $"{urlRoot}#L{m.Syntax.GetLocation().GetLineSpan().StartLinePosition.Line + 1}"),
+                                     a("selflink", "#", $"#{m.AnchorName}"),
+                                     m.ConstraintsToHtml()),
+                            MakeDocumentInToHtml(m),
+                            MakeSubMembers<EnumDeclarationSyntax>(project, m.Members, urlRoot, "Enums"),
+                            MakeSubMembers<DelegateDeclarationSyntax>(project, m.Members, urlRoot, "Delegates"),
+                            MakeSubMembers<EventDeclarationSyntax>(project, m.Members, urlRoot, "Events"),
+                            MakeSubMembers<FieldDeclarationSyntax>(project, m.Members, urlRoot, "Fields"),
+                            MakeSubMembers<IndexerDeclarationSyntax>(project, m.Members, urlRoot, "Indexers"),
+                            MakeSubMembers<PropertyDeclarationSyntax>(project, m.Members, urlRoot, "Properties"),
+                            MakeSubMembers<ConstructorDeclarationSyntax>(project, m.Members, urlRoot, "Constructors"),
+                            MakeSubMembers<MethodDeclarationSyntax>(project, m.Members, urlRoot, "Methods"),
+                            MakeSubMembers<OperatorDeclarationSyntax>(project, m.Members, urlRoot, "Operators"),
+                            MakeSubMembers<InterfaceDeclarationSyntax>(project, m.Members, urlRoot, "Interfaces"),
+                            MakeSubMembers<StructDeclarationSyntax>(project, m.Members, urlRoot, "Structs"),
+                            MakeSubMembers<RecordDeclarationSyntax>(project, m.Members, urlRoot, "Records"),
+                            MakeSubMembers<ClassDeclarationSyntax>(project, m.Members, urlRoot, "Classes"));
 
             return member;
         }
@@ -171,9 +162,9 @@ namespace BestForm
                             .Map(t => MakeSectionsText(t.Inner)) 
                             .Join();
             
-            return Html.div2("methods",
-                             Html.p("caption", Html.text("Examples")),
-                             examples);            
+            return div2("methods",
+                       p("caption", text("Examples")),
+                       examples);            
         }
 
         static Html MakeParametersAndReturns(Member m)
@@ -189,14 +180,14 @@ namespace BestForm
                               .Map(s => (Tag) s)
                               .Filter(t => t.Attrs.Find(a => a.Name == "name").IsSome)
                               .Map(t =>
-                                       Html.tr(
-                                           Html.td("src clearfix", Html.keyword("type")),
-                                           Html.td("src clearfix",
-                                                   Html.span("inst-left",
-                                                             Html.def(
-                                                                 Html.text((string) t.Attrs.Find(a => a.Name == "name").Map(a => a.Value))))),
-                                           Html.td("src clearfix",
-                                                   Html.span("instruction inst-left", MakeSectionsText(t.Inner)))))
+                                       tr(
+                                           td("src clearfix", keyword("type")),
+                                           td("src clearfix",
+                                                   span("inst-left",
+                                                             def(
+                                                                 text((string) t.Attrs.Find(a => a.Name == "name").Map(a => a.Value))))),
+                                           td("src clearfix",
+                                                   span("instruction inst-left", MakeSectionsText(t.Inner)))))
                               .Strict()
                               .Join();
 
@@ -206,13 +197,12 @@ namespace BestForm
                              .Map(s => (Tag) s)
                              .Filter(t => t.Attrs.Find(a => a.Name == "name").IsSome)
                              .Map(t =>
-                                      Html.tr(
-                                          Html.td("src clearfix", Html.keyword("param")),
-                                          Html.td("src clearfix",
-                                                  Html.span("inst-left",
-                                                            Html.def(Html.text((string) t.Attrs.Find(a => a.Name == "name").Map(a => a.Value))))),
-                                          Html.td("src clearfix",
-                                                  Html.span("instruction inst-left", MakeSectionsText(t.Inner)))))
+                                      tr(
+                                          td("src clearfix", keyword("param")),
+                                          td("src clearfix",
+                                               span("inst-left",
+                                                    def(text((string) t.Attrs.Find(a => a.Name == "name").Map(a => a.Value))))),
+                                          td("src clearfix", span("instruction inst-left", MakeSectionsText(t.Inner)))))
                              .Strict()
                              .Join();
 
@@ -221,28 +211,26 @@ namespace BestForm
                            .Filter(s => s.Type == SectionType.Returns && s is Tag)
                            .Map(s => (Tag) s)
                            .Map(t =>
-                                    Html.tr(
-                                        Html.td("src clearfix", Html.keyword("returns")),
-                                        Html.td2("src clearfix",
-                                                Html.span("instruction inst-left", MakeSectionsText(t.Inner)))))
+                                    tr(
+                                        td("src clearfix", keyword("returns")),
+                                        td2("src clearfix", span("instruction inst-left", MakeSectionsText(t.Inner)))))
                            .Strict()
                            .Join();
 
-            return Html.div2("methods",
-                             Html.p("caption", Html.text("Parameters")),
-                             Html.div2("params-and-returns",
-                                       Html.table(
-                                           Html.tbody(
-                                               typeParams + argParams + returns))));
+            return div2("methods",
+                             p("caption", text("Parameters")),
+                             div2("params-and-returns", 
+                                 table(
+                                     tbody(typeParams + argParams + returns))));
         }
 
         static Html MakeSubMembers<MEM>(Project project, Seq<Member> ms, string urlRoot, string memberType) where MEM : MemberDeclarationSyntax
         {
             var submembers = ms.Filter(m => m.Syntax is MEM);
             if (submembers.IsEmpty) return Html.empty;
-            return Html.div2("subs methods",
-                             Html.p("caption", Html.text(memberType)),
-                             submembers.Map(m => MakeMemberDocument(project, m, urlRoot)).Join()); 
+            return div2("subs methods",
+                       p("caption", text(memberType)),
+                       submembers.Map(m => MakeMemberDocument(project, m, urlRoot)).Join()); 
         }
 
         static Html FullTypeToText(Member m) =>
@@ -260,7 +248,7 @@ namespace BestForm
                 ConstructorDeclarationSyntax c => MemberName(m) + Params(c.ParameterList),
                 OperatorDeclarationSyntax c    => MemberName(m) + Params(c.ParameterList),
                 EventDeclarationSyntax c       => Type(c.Type) + MemberName(m),
-                IndexerDeclarationSyntax c     => Html.text("[") + Type(c.Type) + Html.text("]"),
+                IndexerDeclarationSyntax c     => text("[") + Type(c.Type) + text("]"),
                 _                              => Html.empty,
             };
 
@@ -279,15 +267,15 @@ namespace BestForm
                 ConstructorDeclarationSyntax c => MemberNameText(m) + Params(c.ParameterList),
                 OperatorDeclarationSyntax c    => MemberNameText(m) + Params(c.ParameterList),
                 EventDeclarationSyntax c       => MemberNameText(m),  //Type(c.Type) + 
-                IndexerDeclarationSyntax c     => Html.text("this []"),
+                IndexerDeclarationSyntax c     => text("this []"),
                 _                              => Html.empty,
             };
 
         static Html MemberName(Member m) =>
-            Html.def(m.AnchorName, m.Name);
+            def(m.AnchorName, m.Name);
         
         static Html MemberNameText(Member m) =>
-            Html.text(m.Name);
+            text(m.Name);
         
         static Html ShortParams(ParameterListSyntax p) =>
             Html.empty;
@@ -350,11 +338,11 @@ namespace BestForm
                    .Filter(s => s.Type == SectionType.Remarks).Map(s => (Tag) s)
                    .Bind(s => s.Inner));
 
-            return Html.div2("doc",
-                             Html.div(summary),
-                             Html.div(remarks),
-                             MakeParametersAndReturns(m),
-                             MakeExamples(m));
+            return div2("doc",
+                       div(summary),
+                       div(remarks),
+                       MakeParametersAndReturns(m),
+                       MakeExamples(m));
         }
 
         static Html MakeSectionsText(Seq<Section> sections) =>
@@ -363,9 +351,9 @@ namespace BestForm
                 (h, s) => s.Type switch
                           {
                               SectionType.Text      => h + MarkdownText(((Text) s).Value),
-                              SectionType.Paragraph => h + Html.p(MakeSectionsText(((Tag) s).Inner)),
-                              SectionType.Code      => h + Html.code(MakeSectionsText(((Tag) s).Inner)),
-                              SectionType.Example   => h + Html.p(MakeSectionsText(((Tag) s).Inner)),
+                              SectionType.Paragraph => h + p(MakeSectionsText(((Tag) s).Inner)),
+                              SectionType.Code      => h + code(MakeSectionsText(((Tag) s).Inner)),
+                              SectionType.Example   => h + p(MakeSectionsText(((Tag) s).Inner)),
                               _                     => Html.empty
                           });
 
