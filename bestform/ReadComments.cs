@@ -85,7 +85,7 @@ public class ReadComments
         tree.GetRoot()
             .DescendantNodes()
             .Filter(m => m is MEM)
-            .Filter(m => ((MEM)m).Modifiers.Any(m => m.Kind() == SyntaxKind.PublicKeyword))
+            .Filter(m => ((MEM)m).Modifiers.Any(m => m.IsKind(SyntaxKind.PublicKeyword)))
             .Map(FromMember)
             .ToSeq()
             .Strict();
@@ -106,7 +106,7 @@ public class ReadComments
                                            m is not RecordDeclarationSyntax &&
                                            m is not ConversionOperatorDeclarationSyntax)
                               .Map(m => (MemberDeclarationSyntax) m)
-                              .Filter(m => m.Modifiers.Any(m => m.Kind() == SyntaxKind.PublicKeyword))
+                              .Filter(m => m.Modifiers.Any(m => m.IsKind(SyntaxKind.PublicKeyword)))
                               .ToSeq()
                               .Strict();
 
@@ -116,8 +116,8 @@ public class ReadComments
         var name  = NameFromDeclaration(mnode);
 
         var comments = node.GetLeadingTrivia()
-                           .Filter(t => t.Kind() == SyntaxKind.SingleLineDocumentationCommentTrivia ||
-                                        t.Kind() == SyntaxKind.MultiLineDocumentationCommentTrivia)
+                           .Filter(t => t.IsKind(SyntaxKind.SingleLineDocumentationCommentTrivia) ||
+                                        t.IsKind(SyntaxKind.MultiLineDocumentationCommentTrivia))
                            .Map(t => ParseComment(t.GetLocation(), t.ToString()))
                            .ToSeq()
                            .Strict();
