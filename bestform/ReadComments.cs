@@ -10,11 +10,9 @@ using Microsoft.CodeAnalysis.CSharp;
 using static LanguageExt.Parsec.Char;
 using static LanguageExt.Parsec.Prim;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-using F = System.IO.File;
-using D = System.IO.Directory;
-using P = System.IO.Path;
 
 namespace BestForm;
+
 public class ReadComments
 {
     /// <summary>
@@ -28,17 +26,17 @@ public class ReadComments
     /// </summary>
     public static async Task<ProjectData> FromFolder(Project project, string path)
     {
-        if (project.FoldersToExclude.Contains(P.GetFileName(path).ToLower())) return ProjectData.Empty; 
-        var files = D.GetFiles(path, "*.cs");
+        if (project.FoldersToExclude.Contains(IO.GetFileName(path).ToLower())) return ProjectData.Empty; 
+        var files = IO.DirectoryGetFiles(path, "*.cs");
         var data1 = (await files.SequenceParallel(p => FromFile(project, p))).ToSeq().Strict();
-        var folders = D.GetDirectories(path);
+        var folders = IO.DirectoryGetDirectories(path);
         var data2 = (await folders.SequenceParallel(f => FromFolder(project, f))).ToSeq().Strict();
 
-        var readMePath = P.Combine(path, "README.md");
-        var readMe = F.Exists(readMePath)
+        var readMePath = IO.Combine(path, "README.md");
+        var readMe = IO.FileExists(readMePath)
                          ? HashMap((TrimReadMe(
                              readMePath.Substring(project.Root.Length)), 
-                             await F.ReadAllTextAsync(readMePath)))
+                             await IO.ReadAllTextAsync(readMePath)))
                          : Empty;
 
         return (data1 + data2).Fold(ProjectData.Empty with { ReadMe = readMe }, 
@@ -48,7 +46,7 @@ public class ReadComments
 
     static string TrimReadMe(string x)
     {
-        var y = x.Substring(0, x.Length - "\\readme.md".Length).TrimStart('\\');
+        var y = x.Substring(0, x.Length - "\\readme.md".Length).TrimStart('\\', '/');
         return y;
     }
 
@@ -57,7 +55,7 @@ public class ReadComments
     /// </summary>
     public static async Task<ProjectData> FromFile(Project project, string path)
     {
-        var src = await F.ReadAllTextAsync(path);
+        var src = await IO.ReadAllTextAsync(path);
         return FromSource(path.Substring(project.Root.Length + 1), src, project);
     }
     
@@ -393,5 +391,5 @@ public class ReadComments
     /// <typeparam name="A"></typeparam>
     /// <returns></returns>
     static Parser<A> bp<A>(Func<PString, A> f) =>
-        new Parser<A>(inp => ParserResult.EmptyOK<A>(f(inp), inp, null));
+        inp => ParserResult.EmptyOK(f(inp), inp);
 }

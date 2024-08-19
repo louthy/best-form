@@ -13,7 +13,7 @@ var repo = args.Length < 4 ? "https://github.com/louthy/language-ext/tree/main" 
 var sw = new Stopwatch();
 sw.Start();
 
-var project = Project.New(name, src, dest, repo, GetCSS(), GetLogo());
+var project = Project.New(name, IO.SafePath(src), IO.SafePath(dest), repo, GetCSS(), GetLogo());
 project = await ReadComments.FromProject(project);
 DocGen.Run(project);
 
@@ -23,7 +23,7 @@ Console.WriteLine(TimeSpan.FromMilliseconds(sw.ElapsedMilliseconds));
 static string GetCSS()
 {
     var       assembly = Assembly.GetExecutingAssembly();
-    using var stream   = assembly.GetManifestResourceStream($"BestForm.ocean.css");
+    using var stream   = assembly.GetManifestResourceStream("BestForm.ocean.css");
     if (stream == null) return "";
     using var reader = new StreamReader(stream);
     return reader.ReadToEnd();
@@ -32,8 +32,8 @@ static string GetCSS()
 static byte[] GetLogo()
 {
     var       assembly = Assembly.GetExecutingAssembly();
-    using var stream   = assembly.GetManifestResourceStream($"BestForm.logo.png");
-    if (stream == null) return new byte[0];
+    using var stream   = assembly.GetManifestResourceStream("BestForm.logo.png");
+    if (stream == null) return [];
     using var reader = new BinaryReader(stream);
     return reader.ReadBytes((int)stream.Length);
 }
