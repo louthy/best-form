@@ -55,7 +55,17 @@ public static class DocGen
                 MakeModuleLinks(project, folder),
                 MakeMemberDocuments(project, folder, urlRoot)));
 
-        var page = html(head, body(header, content));
+        var footer1 = Html.script(
+            src: "https://cdnjs.cloudflare.com/ajax/libs/prism/1.28.0/components/prism-core.min.js",
+            integrity: "sha512-9khQRAUBYEJDCDVP2yw3LRUQvjJ0Pjx0EShmaQjcHa6AXiOv6qHQu9lCAIR8O+/D8FtaCoJ2c0Tf9Xo7hYH01Q==",
+            crossorigin: "anonymous"); 
+
+        var footer2 = Html.script(
+            src: "https://cdnjs.cloudflare.com/ajax/libs/prism/1.28.0/plugins/autoloader/prism-autoloader.min.js",
+            integrity: "sha512-fTl/qcO1VgvKtOMApX2PdZzkziyr2stM65GYPLGuYMnuMm1z2JLJG6XVU7C/mR+E7xBUqCivykuhlzfqxXBXbg==",
+            crossorigin: "anonymous"); 
+        
+        var page = html(head, body(header, content), footer1, footer2);
         var index = IO.Combine(path, "index.html");
         var text  = render(page);
         IO.WriteAllText(index, text);
@@ -350,7 +360,7 @@ public static class DocGen
             {
                 SectionType.Text      => h + MarkdownText(((Text) s).Value),
                 SectionType.Paragraph => h + p(MakeSectionsText(((Tag) s).Inner)),
-                SectionType.Code      => h + code(MakeSectionsText(((Tag) s).Inner)),
+                SectionType.Code      => h + codeBlock(MakeSectionsText(((Tag) s).Inner)),
                 SectionType.Example   => h + p(MakeSectionsText(((Tag) s).Inner)),
                 _                     => Html.empty
             });
@@ -363,6 +373,8 @@ public static class DocGen
 
         var html = Markdown.ToHtml(text, Pipeline);
         html = html.Replace("<li>", "<li class='markdown-bullet'>");
+        html = html.Replace("<pre>", "<pre class='language-csharp'>");
+        html = html.Replace("<code>", "<code class='language-csharp'>");
             
         return new HtmlRaw(html);
     }

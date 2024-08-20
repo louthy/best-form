@@ -60,7 +60,15 @@ public abstract record Html
     public static Html title(string t) => tag("title", text(t));
     public static Html many(params Html[] inner) => new HtmlMany(inner.ToSeq());
     public static Html many(Seq<Html> inner) => new HtmlMany(inner);
-    public static Html code(params Html[] inner) => tag("code", inner);
+    public static Html code(params Html[] inner) => tag("code", [Attr.@class("language-csharp")], inner);
+    public static Html codeBlock(params Html[] inner) =>
+        tag("pre", [Attr.@class("language-csharp")],
+            tag("code", [Attr.@class("language-csharp")], inner));
+    
+    public static Html script(string src, string integrity, string crossorigin) => 
+        tag("script", [Attr.src(src), Attr.integrity(integrity), Attr.crossorigin(crossorigin), Attr.referrerpolicy("no-referrer") ]);
+    public static Html script(string src, string crossorigin) => 
+        tag("script", [Attr.src(src), Attr.crossorigin(crossorigin), Attr.referrerpolicy("no-referrer") ]);
 
     public static Html nowrap(params Html[] inner) =>
         div2("nowrap", inner);
