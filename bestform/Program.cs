@@ -4,13 +4,12 @@ using System.IO;
 using System.Net.Http;
 using System.Reflection;
 using System.Text;
-using System.Threading.Tasks;
 using BestForm;
 using BestForm.Model;
 
 var name = args.Length < 4 ? @"LanguageExt.Core" : args[0];
-var src  = args.Length < 4 ? @"I:\dev\language-ext\LanguageExt.Core" : args[1];
-var dest = args.Length < 4 ? @"I:\dev\louthy.github.io-2\language-ext" : args[2];
+var src  = args.Length < 4 ? @"/home/paul/Documents/dev/language-ext/LanguageExt.Core" : args[1];
+var dest = args.Length < 4 ? @"/home/paul/Documents/dev/louthy.github.io/language-ext" : args[2];
 var repo = args.Length < 4 ? "https://github.com/louthy/language-ext/tree/main" : args[3];
 
 var sw = new Stopwatch();

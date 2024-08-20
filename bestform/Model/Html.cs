@@ -66,9 +66,9 @@ public abstract record Html
             tag("code", [Attr.@class("language-csharp")], inner));
     
     public static Html script(string src, string integrity, string crossorigin) => 
-        tag("script", [Attr.src(src), Attr.integrity(integrity), Attr.crossorigin(crossorigin), Attr.referrerpolicy("no-referrer") ]);
+        tag("script", Seq(Attr.src(src), Attr.integrity(integrity), Attr.crossorigin(crossorigin), Attr.referrerpolicy("no-referrer")));
     public static Html script(string src, string crossorigin) => 
-        tag("script", [Attr.src(src), Attr.crossorigin(crossorigin), Attr.referrerpolicy("no-referrer") ]);
+        tag("script", Seq(Attr.src(src), Attr.crossorigin(crossorigin), Attr.referrerpolicy("no-referrer")));
 
     public static Html nowrap(params Html[] inner) =>
         div2("nowrap", inner);
