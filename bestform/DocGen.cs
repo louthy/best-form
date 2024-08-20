@@ -374,7 +374,7 @@ public static class DocGen
         var html = Markdown.ToHtml(text, Pipeline);
         html = html.Replace("<li>", "<li class='markdown-bullet'>");
         html = html.Replace("<pre>", "<pre class='language-csharp'>");
-        html = html.Replace("<code>", "<code class='language-csharp'>");
+      //html = html.Replace("<code>", "<code class='language-csharp'>");
             
         return new HtmlRaw(html);
     }
