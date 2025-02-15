@@ -26,7 +26,7 @@ public static class DocGen
     /// </summary>
     static Unit CreateFolders(Project project, string name, Folder folder, int depth)
     {
-        if (folder.FileCount == 0) return unit;
+        if (folder is { FileCount: 0, Folders.Count: 0 }) return unit;
         var path = IO.Combine(project.TargetFolder, name);
         IO.CreateDirectory(path);
         foreach (var f in folder.Folders)
